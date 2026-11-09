@@ -1,0 +1,14 @@
+[Unit]
+Description=VoiceForge (voice and video studio)
+After=network-online.target
+
+[Service]
+User=voiceforge
+WorkingDirectory=/opt/voiceforge
+Environment=VF_DATA=/var/lib/voiceforge COOKIE_SECURE=1
+EnvironmentFile=-/etc/voiceforge.env
+ExecStart=/opt/voiceforge/venv/bin/gunicorn -w 2 --threads 4 --timeout 180 -b 127.0.0.1:8080 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+edge-tts==7.*
+flask==3.*
+gunicorn
+google-auth
+requests
+Pillow
+imageio-ffmpeg

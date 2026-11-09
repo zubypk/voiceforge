@@ -1,0 +1,17 @@
+services:
+  voiceforge:
+    build: .
+    image: voiceforge:latest
+    ports:
+      - "8080:8080"
+    environment:
+      SECRET_KEY: "change-me-to-a-long-random-string"
+      # GOOGLE_CLIENT_ID: "xxxx.apps.googleusercontent.com"   # enables "Sign in with Google"
+      # REQUIRE_LOGIN: "1"                                      # require sign-in for voice/video
+      # ALLOWED_EMAIL_DOMAINS: "example.com"                    # optional allow-list
+      # COOKIE_SECURE: "1"                                      # set when served over HTTPS
+    volumes:
+      - voiceforge-data:/data     # rendered videos and uploads (auto-deleted after 24 h)
+    restart: unless-stopped
+volumes:
+  voiceforge-data:

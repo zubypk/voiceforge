@@ -1,0 +1,11 @@
+.git
+.github
+__pycache__
+*.pyc
+venv
+data
+out
+*.mp4
+*.mp3
+.secret_key
+test_*.py
