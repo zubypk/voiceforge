@@ -11,7 +11,16 @@ cd "$APP_DIR"
 log() { printf '\n== %s\n' "$*"; }
 
 log "Updating code"
-if [ -d .git ]; then git pull --ff-only; else echo "(not a git checkout: skipping pull)"; fi
+REPO="${REPO:-https://github.com/zubypk/voiceforge}"
+if [ "${SKIP_PULL:-0}" = "1" ]; then echo "(pull skipped)"
+elif [ ! -d .git ]; then   # turn an existing copied folder into a checkout; venv/, data/, .secret_key are git-ignored and kept
+  git init -q && git remote add origin "$REPO"
+  git fetch -q origin main && git reset -q --hard origin/main
+else
+  [ -f .git/shallow ] && git fetch -q --unshallow origin || true
+  git pull -q --ff-only
+fi
+git log --oneline -1 2>/dev/null || true
 
 log "Python packages"
 [ -x venv/bin/python ] || python3 -m venv venv
@@ -50,7 +59,7 @@ curl -fs "http://127.0.0.1:$PORT/api/config" | grep -o '"build":{[^}]*}' || { ec
 
 if [ "${SKIP_TUNNEL:-0}" = "1" ]; then echo "Done (tunnel skipped)."; exit 0; fi
 log "Public demo link"
-if ! pgrep -f "cloudflared.*tunnel.*127.0.0.1:$PORT" >/dev/null; then
+if ! pgrep -f "cloudflared.*:$PORT" >/dev/null; then
   CF="$(command -v cloudflared || echo "$APP_DIR/cloudflared")"
   if [ ! -x "$CF" ]; then
     curl -fsSL -o "$APP_DIR/cloudflared" https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
