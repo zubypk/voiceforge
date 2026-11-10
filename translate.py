@@ -1,15 +1,16 @@
 """Text translation for the Voice tab (no API key needed).
 
-Primary: the Microsoft Edge translator endpoint (same vendor as the voices).
-Fallback: the public Google web endpoint. Both are unofficial and may change.
+Backends, tried in order (all free, no key, unofficial - they can change or rate-limit):
+  1. Google's Chrome dictionary endpoint (clients5) - auto-detects the source language
+  2. MyMemory (api.mymemory.translated.net) - free tier, ~5,000 characters/day per server IP
+  3. Google's web endpoint (translate_a/single)
+(The old Microsoft Edge endpoint was shut down in 2026.)
 `translate(text, to_locale, from_locale=None, backend=None)` accepts an injectable
 backend for tests: backend(chunks, src, dst) -> list[str].
 """
 from __future__ import annotations
 
 import re
-import threading
-import time
 
 import requests
 
@@ -53,33 +54,6 @@ def split_chunks(text: str, size: int = _CHUNK) -> list[str]:
     return out
 
 
-_tok = {"v": None, "t": 0.0}
-_lock = threading.Lock()
-
-
-def _edge_token() -> str:
-    with _lock:
-        if _tok["v"] and time.time() - _tok["t"] < 480:
-            return _tok["v"]
-        r = requests.get("https://edge.microsoft.com/translate/auth", timeout=_TIMEOUT)
-        r.raise_for_status()
-        _tok["v"], _tok["t"] = r.text.strip(), time.time()
-        return _tok["v"]
-
-
-def _edge(chunks: list[str], src: str | None, dst: str) -> list[str]:
-    params = {"to": dst, "api-version": "3.0", "includeSentenceLength": "true"}
-    if src:
-        params["from"] = src
-    r = requests.post("https://api-edge.cognitive.microsofttranslator.com/translate", params=params,
-                      headers={"Authorization": "Bearer " + _edge_token(), "Content-Type": "application/json"},
-                      json=[{"Text": c} for c in chunks], timeout=_TIMEOUT)
-    if r.status_code == 401:
-        _tok["v"] = None
-    r.raise_for_status()
-    return [item["translations"][0]["text"] for item in r.json()]
-
-
 def _google(chunks: list[str], src: str | None, dst: str) -> list[str]:
     out = []
     for c in chunks:
@@ -90,9 +64,44 @@ def _google(chunks: list[str], src: str | None, dst: str) -> list[str]:
     return out
 
 
+def _clients5(chunks: list[str], src: str | None, dst: str) -> list[str]:
+    out = []
+    for c in chunks:
+        r = requests.get("https://clients5.google.com/translate_a/t",
+                         params={"client": "dict-chrome-ex", "sl": src or "auto", "tl": dst, "q": c}, timeout=_TIMEOUT)
+        r.raise_for_status()
+        data = r.json()
+        item = data[0] if isinstance(data, list) and data else data
+        text = item[0] if isinstance(item, list) else item
+        if not isinstance(text, str):
+            raise ValueError("unexpected response")
+        out.append(text + (" " if c.endswith(" ") and not text.endswith(" ") else ""))
+    return out
+
+
+def _mymemory(chunks: list[str], src: str | None, dst: str) -> list[str]:
+    out = []
+    for c in chunks:
+        pieces = split_chunks(c, 480) if len(c) > 480 else [c]   # MyMemory accepts ~500 characters per request
+        res = []
+        for p in pieces:
+            if not p.strip():
+                res.append(p)
+                continue
+            r = requests.get("https://api.mymemory.translated.net/get",
+                             params={"q": p, "langpair": f"{src or 'autodetect'}|{dst}"}, timeout=_TIMEOUT)
+            r.raise_for_status()
+            j = r.json()
+            if int(j.get("responseStatus") or 200) != 200:
+                raise ValueError(j.get("responseDetails") or "quota")
+            res.append(j["responseData"]["translatedText"])
+        out.append(" ".join(x.strip() for x in res))
+    return out
+
+
 def _default_backend(chunks, src, dst):
     last = None
-    for fn in (_edge, _google):
+    for fn in (_clients5, _mymemory, _google):
         try:
             return fn(chunks, src, dst)
         except Exception as exc:  # noqa: BLE001 - try the next backend

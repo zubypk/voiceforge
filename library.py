@@ -259,15 +259,19 @@ def search(kind: str, q: str, category: str | None = None, page: int = 1, sessio
     params = {"q": q or ("music" if kind == "audio" else "education"), "page": max(1, min(int(page or 1), 20)),
               "page_size": 20, "license_type": "commercial", "mature": "false"}
     cats = AUDIO_CATEGORIES if kind == "audio" else IMAGE_CATEGORIES
-    if category in cats:
+    # Most sound effects (Freesound) carry no category tag, so filtering on "sound_effect" hides them.
+    if category in cats and category != "sound_effect":
         params["category"] = category
-    if kind == "audio":
-        params["extension"] = "mp3,ogg,wav,flac"
     http = session or requests
     try:
         r = http.get(f"{OPENVERSE}/{KINDS[kind]}/", params=params, headers=UA, timeout=TIMEOUT)
         r.raise_for_status()
         data = r.json()
+        if not data.get("results") and "category" in params:      # too narrow: retry without the category
+            params.pop("category")
+            r = http.get(f"{OPENVERSE}/{KINDS[kind]}/", params=params, headers=UA, timeout=TIMEOUT)
+            r.raise_for_status()
+            data = r.json()
     except Exception as exc:  # noqa: BLE001
         raise LibraryError(f"The online library is not reachable right now ({exc.__class__.__name__}).") from exc
     items = [_clean_item(kind, x) for x in data.get("results", []) if x.get("id") and x.get("url")]

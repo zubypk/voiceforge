@@ -188,7 +188,7 @@ def api_translate():
     try:
         out = translate_mod.translate(str(data.get("text", "")), str(data.get("to", "")), data.get("from") or None)
     except translate_mod.TranslateError as exc:
-        return jsonify(error=str(exc)), (502 if "unavailable" in str(exc) else 400)
+        return jsonify(error=str(exc)), (503 if "unavailable" in str(exc) else 400)   # 502 gets replaced by Cloudflare
     return jsonify(text=out)
 
 
