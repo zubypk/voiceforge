@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keeps VoiceForge and its public demo link alive. Installed into the user's crontab by update.sh:
+# Keeps Voxa and its public demo link alive. Installed into the user's crontab by update.sh:
 #   */5 * * * *  and  @reboot   ->  bash deploy/watchdog.sh
 # Restarts the app if /healthz stops answering and the Cloudflare quick tunnel if it is gone.
 # The current public link is always written to PUBLIC_URL.txt in the app folder.
@@ -19,6 +19,7 @@ if ! curl -fs -m 10 "http://127.0.0.1:$PORT/healthz" >/dev/null; then
     -b "127.0.0.1:$PORT" app:app >> server.log 2>&1 < /dev/null &
 fi
 
+[ -f "$APP_DIR/.no_tunnel" ] && SKIP_TUNNEL=1     # site has its own domain: no quick tunnel
 if [ "${SKIP_TUNNEL:-0}" != "1" ] && ! pgrep -f "cloudflared.*:$PORT" >/dev/null; then
   CF="$(command -v cloudflared || echo "$APP_DIR/cloudflared")"
   if [ -x "$CF" ]; then

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish VoiceForge on your own (sub)domain with HTTPS. Run ONCE with sudo, after the DNS record exists:
+# Publish Voxa on your own (sub)domain with HTTPS. Run ONCE with sudo, after the DNS record exists:
 #   sudo bash deploy/nginx-site.sh studio.lusona.org [port] [email]
 # Creates /etc/nginx/sites-available/<domain> (reverse proxy to 127.0.0.1:<port>, default 5057),
 # enables it, checks the nginx config, reloads nginx and gets a Let's Encrypt certificate with certbot.
@@ -10,7 +10,7 @@ DOMAIN="${1:?usage: sudo bash deploy/nginx-site.sh <domain> [port] [email]}"; PO
 CONF="/etc/nginx/sites-available/$DOMAIN"
 if [ -e "$CONF" ]; then echo "$CONF already exists: leaving it unchanged."; else
 cat > "$CONF" <<NGINX
-# VoiceForge -> 127.0.0.1:$PORT  (created by deploy/nginx-site.sh)
+# Voxa -> 127.0.0.1:$PORT  (created by deploy/nginx-site.sh)
 server {
     listen 80;
     listen [::]:80;
@@ -40,6 +40,8 @@ if command -v certbot >/dev/null; then
   if [ -n "$EMAIL" ]; then certbot --nginx -d "$DOMAIN" --redirect --non-interactive --agree-tos -m "$EMAIL"
   else certbot --nginx -d "$DOMAIN" --redirect; fi
   echo "Done: https://$DOMAIN"
+  APP="$(cd "$(dirname "$0")/.." && pwd)"; [ -f "$APP/app.py" ] && touch "$APP/.no_tunnel" && chown --reference="$APP/app.py" "$APP/.no_tunnel" \
+    && echo "The temporary trycloudflare link will no longer be started (delete $APP/.no_tunnel to re-enable)."
 else
   echo "certbot is not installed: apt install certbot python3-certbot-nginx, then: certbot --nginx -d $DOMAIN --redirect"
 fi

@@ -26,7 +26,7 @@ from PIL import Image, ImageDraw, ImageFont
 import video
 
 HERE = Path(__file__).parent
-UA = {"User-Agent": "VoiceForge/1.0 (educational video editor)"}
+UA = {"User-Agent": "Voxa/1.0 (educational video editor)"}
 OPENVERSE = os.environ.get("OPENVERSE_API", "https://api.openverse.org/v1")
 TIMEOUT = 20
 MAX_DOWNLOAD = 40 * 1024 * 1024

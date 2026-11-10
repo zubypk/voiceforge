@@ -190,7 +190,7 @@ def client(fake_service):
 
 def test_index_renders(client):
     r = client.get("/")
-    assert r.status_code == 200 and b"VoiceForge" in r.data
+    assert r.status_code == 200 and b"<title>Voxa" in r.data
 
 
 def test_api_voices(client):

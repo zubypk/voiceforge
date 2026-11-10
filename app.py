@@ -1,4 +1,4 @@
-"""VoiceForge: natural neural voices (edge-tts) + video studio, with optional Google sign-in.
+"""Voxa (formerly VoiceForge): natural neural voices (edge-tts) + video studio, with optional Google sign-in.
 
 Environment:
   GOOGLE_CLIENT_ID       OAuth client id. Sign-in is hidden if unset.
@@ -561,7 +561,7 @@ def api_projects_save():
 
 @app.post("/api/projects/import")
 def api_projects_import():
-    """Import a .voiceforge.zip bundle (with media) or a plain project .json."""
+    """Import a .voxa.zip / .voiceforge.zip bundle (with media) or a plain project .json."""
     if (gate := _login_gate()):
         return gate
     f = request.files.get("file")
@@ -608,7 +608,7 @@ def api_projects_bundle(pid):
     except projects_mod.ProjectError as exc:
         return jsonify(error=str(exc)), 404
     safe = "".join(c if c.isalnum() or c in "-_ " else "_" for c in name).strip() or "project"
-    return send_file(io.BytesIO(data), mimetype="application/zip", as_attachment=True, download_name=f"{safe}.voiceforge.zip")
+    return send_file(io.BytesIO(data), mimetype="application/zip", as_attachment=True, download_name=f"{safe}.voxa.zip")
 
 
 if __name__ == "__main__":

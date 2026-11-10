@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command update for a VoiceForge server without root (venv + gunicorn + Cloudflare quick tunnel).
+# One-command update for a Voxa server without root (venv + gunicorn + Cloudflare quick tunnel).
 #   bash deploy/update.sh                 # pull, install, stamp build, restart, keep tunnel
 #   WITH_OFFICE=1 bash deploy/update.sh   # also install a portable LibreOffice (Word/Excel/PPT import), ~350 MB
 # SKIP_TUNNEL=1 leaves the public link alone. Settings (env): APP_DIR (default: repo root), PORT (5057), VF_DATA (APP_DIR/data), WORKERS (2)
@@ -65,7 +65,10 @@ SECRET_KEY="$(cat .secret_key)" COOKIE_SECURE=1 setsid nohup venv/bin/gunicorn -
 for i in $(seq 1 20); do curl -fs "http://127.0.0.1:$PORT/healthz" >/dev/null && break; sleep 1; done
 curl -fs "http://127.0.0.1:$PORT/api/config" | grep -o '"build":{[^}]*}' || { echo "App did not start, see server.log:"; tail -20 server.log; exit 1; }
 
-if [ "${SKIP_TUNNEL:-0}" = "1" ]; then echo "Done (tunnel skipped)."; exit 0; fi
+[ -f "$APP_DIR/.no_tunnel" ] && SKIP_TUNNEL=1     # created when the site has its own domain (deploy/nginx-site.sh)
+if [ "${SKIP_TUNNEL:-0}" = "1" ]; then
+  echo "Tunnel skipped."
+else
 log "Public demo link"
 if ! pgrep -f "cloudflared.*:$PORT" >/dev/null; then
   CF="$(command -v cloudflared || echo "$APP_DIR/cloudflared")"
@@ -78,6 +81,7 @@ if ! pgrep -f "cloudflared.*:$PORT" >/dev/null; then
 fi
 grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' tunnel.log 2>/dev/null | tail -1 > PUBLIC_URL.txt || true
 echo "Demo link: $(cat PUBLIC_URL.txt 2>/dev/null || echo 'not found yet, see tunnel.log')"
+fi
 
 log "Auto-restart (every 5 minutes and after reboot)"
 job="cd $APP_DIR && PORT=$PORT bash deploy/watchdog.sh >/dev/null 2>&1"
@@ -87,9 +91,9 @@ else
   # no crontab permission: use a systemd user timer (needs lingering for after-reboot starts)
   export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
   D="$HOME/.config/systemd/user"; mkdir -p "$D"
-  printf '[Unit]\nDescription=VoiceForge watchdog\n\n[Service]\nType=oneshot\nWorkingDirectory=%s\nEnvironment=PORT=%s\nExecStart=/bin/bash %s/deploy/watchdog.sh\nKillMode=process\n' \
+  printf '[Unit]\nDescription=Voxa watchdog\n\n[Service]\nType=oneshot\nWorkingDirectory=%s\nEnvironment=PORT=%s\nExecStart=/bin/bash %s/deploy/watchdog.sh\nKillMode=process\n' \
     "$APP_DIR" "$PORT" "$APP_DIR" > "$D/voiceforge-watchdog.service"
-  printf '[Unit]\nDescription=Run the VoiceForge watchdog at boot and every 5 minutes\n\n[Timer]\nOnBootSec=60\nOnUnitActiveSec=5min\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > "$D/voiceforge-watchdog.timer"
+  printf '[Unit]\nDescription=Run the Voxa watchdog at boot and every 5 minutes\n\n[Timer]\nOnBootSec=60\nOnUnitActiveSec=5min\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > "$D/voiceforge-watchdog.timer"
   if systemctl --user daemon-reload 2>/dev/null && systemctl --user enable --now voiceforge-watchdog.timer 2>/dev/null; then
     echo "Installed as a systemd user timer."
     loginctl show-user "$(id -u)" -p Linger 2>/dev/null | grep -q yes || echo "Note: run 'sudo loginctl enable-linger $(whoami)' so it also starts after a reboot."

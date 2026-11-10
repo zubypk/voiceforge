@@ -1,4 +1,6 @@
-# VoiceForge
+# Voxa
+
+Live: https://voxa.lusona.org  ·  (repository name `voiceforge` is the original project name)
 
 Text-to-speech, speech-to-text, an audio editor and an educational video studio in one web app (English and Arabic UI, five colour themes).
 

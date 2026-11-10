@@ -199,11 +199,11 @@ class ProjectStore:
             try:
                 doc = json.loads(data.decode("utf-8"))
             except (UnicodeDecodeError, ValueError):
-                raise ProjectError("That file is not a VoiceForge project.")
+                raise ProjectError("That file is not a Voxa project.")
             mapping = {}
         project = doc.get("project") if isinstance(doc, dict) and "project" in doc else doc
         if not isinstance(project, dict) or not isinstance(project.get("scenes"), list):
-            raise ProjectError("That file is not a VoiceForge project.")
+            raise ProjectError("That file is not a Voxa project.")
         for aid in asset_ids(project):          # references to files we do not have are dropped
             if aid not in mapping:
                 mapping[aid] = aid if assets.path(aid) else None

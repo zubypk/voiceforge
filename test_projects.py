@@ -224,7 +224,7 @@ def test_export_and_import_a_bundle_over_http(client):
     p["scenes"] = [{"layout": "media", "title": "x", "background": {"type": "theme"}, "media": {"asset": pic}}]
     pid = client.post("/api/projects", json={"name": "Bundle me", "project": p}).get_json()["id"]
     r = client.get(f"/api/projects/{pid}/bundle")
-    assert r.status_code == 200 and r.mimetype == "application/zip" and ".voiceforge.zip" in r.headers["Content-Disposition"]
+    assert r.status_code == 200 and r.mimetype == "application/zip" and ".voxa.zip" in r.headers["Content-Disposition"]
 
     friend = web.app.test_client()
     up = friend.post("/api/projects/import", data={"file": (io.BytesIO(r.data), "x.zip")}, content_type="multipart/form-data")

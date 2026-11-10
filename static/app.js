@@ -308,7 +308,7 @@ $("pDelete").onclick = async () => {
   if (!V.serverId || !confirm(t("p_delete_confirm"))) return;
   try { await api(`/api/projects/${V.serverId}`, { method: "DELETE" }); const p = defaultProject(); loadProjectInto(p, "", null); } catch (e) { toast(e.message, true); }
 };
-$("pExportJson").onclick = () => saveBlob(new Blob([JSON.stringify({ format: "voiceforge-project", version: 2, name: V.name, project: V.project }, null, 1)], { type: "application/json" }), `${(V.name || "project").replace(/[^\w\- ]+/g, "_")}.voiceforge.json`);
+$("pExportJson").onclick = () => saveBlob(new Blob([JSON.stringify({ format: "voiceforge-project", version: 2, name: V.name, project: V.project }, null, 1)], { type: "application/json" }), `${(V.name || "project").replace(/[^\w\- ]+/g, "_")}.voxa.json`);
 $("pExportZip").onclick = async () => {
   await saveProject({ silent: true }); if (!V.serverId) return toast(t("p_save_first"), true);
   location.href = `/api/projects/${V.serverId}/bundle`;
