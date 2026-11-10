@@ -96,6 +96,12 @@ The voice must match the language of the text. Arabic text with a French voice, 
 
 Arabic, Latin, Cyrillic and Greek work with DejaVu Sans. Other scripts need a matching system font (the Docker image installs Noto fonts; build with `--build-arg INSTALL_CJK=1` for Chinese/Japanese/Korean). Narration works for every language regardless.
 
+## Docker on the server
+
+1. Once, with sudo: `sudo bash deploy/docker-setup.sh` (adds the docker compose plugin and gives your user Docker access).
+2. Then, and for every update: `bash deploy/docker-deploy.sh`. It builds the image, keeps `data/` and your secret key, serves on 127.0.0.1:5057 for nginx, restarts automatically, and rolls back to the non-Docker setup if the container is not healthy.
+The container runs as your user with a read-only filesystem, no Linux capabilities and memory/CPU limits. Settings live in `.env.docker` (not in git or the image).
+
 ## Security
 
 - Per-client rate limits on every expensive endpoint (render, TTS, translate, import, uploads, library); proxy headers are trusted only from the local proxy.

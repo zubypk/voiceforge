@@ -15,3 +15,4 @@ build.json
 /cloudflared
 /update.sh
 /.no_tunnel
+/.env.docker

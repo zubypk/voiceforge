@@ -1,0 +1,30 @@
+# Voxa on a server, behind the host's nginx (deploy/nginx-site.sh) on 127.0.0.1:5057.
+# Used by deploy/docker-deploy.sh; run from the app folder:  docker compose -f deploy/docker-compose.server.yml up -d
+services:
+  voxa:
+    build:
+      context: ..
+      args:
+        INSTALL_OFFICE: "1"     # Word / Excel / PowerPoint import
+        INSTALL_CJK: "1"        # Chinese / Japanese / Korean slide text
+    image: voxa:latest
+    container_name: voxa
+    restart: unless-stopped     # starts at boot and after crashes (replaces the watchdog)
+    user: "${VOXA_UID:-1000}:${VOXA_GID:-1000}"   # same owner as the data folder on the host
+    env_file: ../.env.docker    # SECRET_KEY, COOKIE_SECURE, optional GOOGLE_CLIENT_ID / ADSENSE_* (not in git)
+    ports:
+      - "127.0.0.1:5057:8080"   # only reachable through nginx on this machine
+    volumes:
+      - ../data:/data           # uploads, saved projects, renders (kept across updates)
+    read_only: true             # container filesystem is read-only; only /data and /tmp are writable
+    tmpfs:
+      - /tmp:size=2g
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 5g
+    cpus: 3.5
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

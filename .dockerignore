@@ -9,3 +9,11 @@ out
 *.mp3
 .secret_key
 test_*.py
+.env*
+.no_tunnel
+PUBLIC_URL.txt
+*.log
+cloudflared
+update.sh
+tests_fixtures
+backup-*
