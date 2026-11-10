@@ -244,6 +244,7 @@ function preview() {
   }));
   els.forEach((el, id) => { if (!live.has(id)) { if (el.pause) el.pause(); el.remove(); els.delete(id); } });
   $("tlPlayhead").style.left = playhead * pps + "px"; $("tlTime").textContent = `${fmt(playhead)} / ${fmt(duration())}`;
+  const sc = $("tlScrub"); if (sc && document.activeElement !== sc) { sc.max = Math.max(0.1, duration()).toFixed(2); sc.value = playhead.toFixed(2); }
 }
 function hexA(h) { if (h.length === 9) { const a = parseInt(h.slice(7), 16) / 255; return `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a.toFixed(2)})`; } return h; }
 function seek(s) { playhead = clamp(s, 0, Math.max(duration(), 0)); if (playing) { t0 = performance.now(); p0 = playhead; } preview(); }
@@ -346,6 +347,7 @@ on("tlAddSfx", async () => { const a = await VFLibrary.open("sfx"); if (a) addAs
 on("tlRec", recordVoice); on("tlFromScenes", fromScenes); on("tlExport", exportMp4);
 on("tlAddTrackV", () => addTrack("video")); on("tlAddTrackO", () => addTrack("overlay")); on("tlAddTrackA", () => addTrack("audio"));
 $("tlZoom").oninput = (e) => { pps = +e.target.value; render(); };
+$("tlScrub").oninput = (e) => seek(+e.target.value);
 $("tlSnap").onchange = (e) => (snap = e.target.checked);
 $("tlRuler").onpointerdown = (e) => { const r = $("tlRuler").getBoundingClientRect(); const go = (x) => seek((x - r.left) / pps);
   go(e.clientX); const mv = (m) => go(m.clientX); const up = () => { removeEventListener("pointermove", mv); removeEventListener("pointerup", up); };

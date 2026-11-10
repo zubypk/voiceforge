@@ -37,65 +37,63 @@ const P = {
   help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01",
   sun: "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
   doc: "M7 3h8l4 4v14H7zM15 3v4h4", eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-  keyboard: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10", logo: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z",
+  keyboard: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10", home: "M3 11l9-8 9 8M5 9v11h5v-6h4v6h5V9",
+  maximize: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5", minimize: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5", logo: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z",
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n] || P.plus}"/></svg>`;
 const click = (id) => () => { const e = $(id); if (!e) return; if (e.tagName === "INPUT" && e.type === "file") e.click(); else e.click(); };
 const view = () => (location.hash || "#voice").slice(1);
+let lastVtab = "scenes";
+const initialHash = (location.hash || "#home").slice(1);     // read before app.js rewrites the hash
 
 /* ---------------- ribbon definitions ---------------- */
 const FILE = [{ i: "new", k: "rb_new", a: click("pNew") }, { i: "open", k: "rb_open", a: click("pOpen") }, { i: "save", k: "rb_save", a: click("pSave"), primary: true },
   { i: "download", k: "rb_download", a: click("pExportZip") }];
 const RIBBON = {
   voice: [
-    { g: "rg_speech", items: [{ i: "play", k: "rb_preview", a: click("previewBtn"), primary: true }, { i: "download", k: "rb_export_mp3", a: click("exportBtn") }, { i: "scissors", k: "rb_edit_audio", a: click("editAudioBtn") }] },
+    { g: "rg_speech", items: [{ i: "scissors", k: "rb_edit_audio", a: click("editAudioBtn") }] },
     { g: "rg_text", items: [{ i: "globe", k: "rb_translate", a: () => { const d = $("trBox"); d.open = true; $("trLang").focus(); } }, { i: "mic", k: "rb_dictate", a: () => { $("trBox").open = true; $("trMic").click(); } },
       { i: "wand", k: "rb_sample", a: click("sampleBtn") }, { i: "search", k: "rb_detect", a: click("detectBtn") }] },
   ],
   video: [
-    { g: "rg_file", items: FILE },
     { g: "rg_scenes", items: [{ i: "plus", k: "rb_add_scene", a: () => { vtab("scenes"); $("addScene").click(); } }, { i: "dup", k: "rb_duplicate", a: () => { vtab("scenes"); $("sDup").click(); } },
       { i: "trash", k: "rb_delete", a: () => { vtab("scenes"); $("sDel").click(); } }, { i: "up", k: "rb_up", a: click("sUp") }, { i: "down", k: "rb_down", a: click("sDown") }] },
     { g: "rg_insert", items: [{ i: "doc", k: "rb_import_doc", a: click("importDoc") }, { i: "layers", k: "rb_layer", a: () => { vtab("scenes"); $("layerBox").open = true; $("addLayer").click(); } },
       { i: "music", k: "rb_music", a: click("musicLib") }, { i: "mic", k: "rb_voiceover", a: () => { vtab("scenes"); $("voBox").open = true; $("voBox").scrollIntoView({ block: "center" }); } }] },
-    { g: "rg_output", items: [{ i: "play", k: "rb_play_preview", a: click("vPlayAll"), primary: true }, { i: "film", k: "rb_render", a: () => { vtab("export"); $("renderBtn").click(); } },
-      { i: "export", k: "rb_to_timeline", a: () => { VF.showView("timeline"); setTimeout(() => window.VFTimeline && VFTimeline.fromScenes(), 50); } }] },
+    { g: "rg_output", items: [{ i: "export", k: "rb_to_timeline", a: () => { VF.showView("timeline"); setTimeout(() => window.VFTimeline && VFTimeline.fromScenes(), 50); } }] },
   ],
   timeline: [
-    { g: "rg_file", items: FILE },
     { g: "rg_edit", items: [{ i: "play", k: "rb_play", a: () => VFTimeline.play(), primary: true }, { i: "scissors", k: "tl_split", a: () => VFTimeline.split() }, { i: "dup", k: "rb_duplicate", a: () => VFTimeline.dup() },
       { i: "trash", k: "rb_delete", a: () => VFTimeline.del() }, { i: "undo", k: "rb_undo", a: () => VFTimeline.undo() }, { i: "redo", k: "rb_redo", a: () => VFTimeline.redo() }] },
     { g: "rg_insert", items: [{ i: "film", k: "rb_media", a: click("tlAddMedia") }, { i: "image", k: "lt_photos", a: click("tlAddPhoto") }, { i: "layers", k: "rb_layer", a: click("tlAddOverlay") },
       { i: "text", k: "tl_text", a: click("tlAddText") }, { i: "square", k: "tl_color", a: click("tlAddColor") }, { i: "music", k: "rb_music", a: click("tlAddMusic") },
       { i: "volume", k: "rb_sfx", a: click("tlAddSfx") }, { i: "mic", k: "rb_record", a: click("tlRec") }, { i: "upload", k: "rb_from_scenes", a: click("tlFromScenes") }] },
-    { g: "rg_output", items: [{ i: "film", k: "rb_export_mp4", a: click("tlExport"), primary: true }] },
   ],
   stt: [
-    { g: "rg_listen", items: [{ i: "mic", k: "rb_listen", a: click("sttBtn"), primary: true }, { i: "trash", k: "rb_clear", a: click("sttClear") }] },
+    { g: "rg_listen", items: [{ i: "trash", k: "rb_clear", a: click("sttClear") }] },
     { g: "rg_text", items: [{ i: "copy", k: "rb_copy", a: click("sttCopy") }, { i: "file", k: "rb_txt", a: click("sttTxt") }, { i: "captions", k: "rb_srt", a: click("sttSrt") },
       { i: "globe", k: "rb_translate", a: click("sttTrBtn") }, { i: "volume", k: "rb_to_tts", a: click("sttToTts") }] },
     { g: "rg_recording", items: [{ i: "scissors", k: "rb_edit_audio", a: click("sttEdit") }, { i: "save", k: "rb_save_lib", a: click("sttSave") }] },
   ],
   audio: [
-    { g: "rg_file", items: [{ i: "open", k: "rb_import_sound", a: click("aeFile") }, { i: "grid", k: "rb_from_lib", a: click("aeLib") }, { i: "mic", k: "rb_record", a: click("aeRec") }] },
+    { g: "rg_file", items: [{ i: "grid", k: "rb_from_lib", a: click("aeLib") }, { i: "mic", k: "rb_record", a: click("aeRec") }] },
     { g: "rg_play", items: [{ i: "play", k: "rb_play", a: click("aePlay"), primary: true }, { i: "undo", k: "rb_undo", a: click("aeUndo") }, { i: "redo", k: "rb_redo", a: click("aeRedo") }] },
     { g: "rg_edit", items: [{ i: "scissors", k: "rb_cut", a: click("ae_cut") }, { i: "copy", k: "rb_copy", a: click("ae_copy") }, { i: "paste", k: "rb_paste", a: click("ae_paste") },
       { i: "trash", k: "rb_delete", a: click("ae_delete") }, { i: "crop", k: "rb_trim", a: click("ae_trim") }] },
     { g: "rg_effects", items: [{ i: "fadein", k: "ae_fadein", a: click("ae_fadein") }, { i: "fadeout", k: "ae_fadeout", a: click("ae_fadeout") }, { i: "bars", k: "ae_normalize", a: click("ae_normalize") },
       { i: "wand", k: "rb_fx", a: () => { $("aeFx").focus(); $("aeFx").scrollIntoView({ block: "center" }); } }] },
-    { g: "rg_output", items: [{ i: "download", k: "rb_export_mp3", a: click("aeMp3"), primary: true }, { i: "download", k: "rb_export_wav", a: click("aeWav") }, { i: "save", k: "rb_save_lib", a: click("aeSave") }] },
+    { g: "rg_output", items: [{ i: "download", k: "rb_export_wav", a: click("aeWav") }, { i: "save", k: "rb_save_lib", a: click("aeSave") }] },
   ],
 };
 function drawRibbon() {
   const r = $("ribbon"); r.innerHTML = "";
   (RIBBON[view()] || []).forEach((grp) => {
     const g = document.createElement("div"); g.className = "rgroup";
-    const items = document.createElement("div"); items.className = "ritems";
+    const items = document.createDocumentFragment();
     grp.items.forEach((it) => { const b = document.createElement("button"); b.className = "rbtn" + (it.primary ? " primary" : ""); b.type = "button";
       b.innerHTML = icon(it.i) + "<span></span>"; b.lastChild.textContent = t(it.k); b.title = t(it.k);
       b.onclick = () => { try { it.a(); } catch (e) { console.error(e); } }; items.appendChild(b); });
-    const lab = document.createElement("div"); lab.className = "rlabel"; lab.textContent = t(grp.g);
-    g.append(items, lab); r.appendChild(g);
+    g.title = t(grp.g); g.appendChild(items); r.appendChild(g);
   });
 }
 
@@ -113,11 +111,11 @@ const MENUS = {
       ["paste", "rb_paste", click("ae_paste")], ["trash", "rb_delete", click("ae_delete")]]
     : view() === "video" ? [["plus", "rb_add_scene", click("addScene")], ["dup", "rb_duplicate", click("sDup")], ["trash", "rb_delete", click("sDel")]]
     : [["copy", "rb_copy", () => document.execCommand("copy")], ["paste", "rb_paste", () => navigator.clipboard && navigator.clipboard.readText().then((x) => document.execCommand("insertText", false, x))]],
-  view: () => [["monitor", "ws_desktop", () => setWs("desktop"), ws() === "desktop"], ["globe", "ws_web", () => setWs("web"), ws() === "web"], "-",
+  view: () => [["maximize", "rb_maximize", () => toggleFull(), isFull()], ["home", "sn_home", () => setRoute("home")], "-",
     ...THEMES.map((k) => ["sun", "th_" + k, () => document.querySelector(`.tdot[data-t=${k}]`).click(), document.documentElement.dataset.theme === k]), "-",
     ["globe", "rb_language", click("langBtn")]],
-  help: () => [["keyboard", "rb_shortcuts", shortcuts], ["help", "rb_guide", () => { setWs("web"); setTimeout(() => $("guide").scrollIntoView({ behavior: "smooth" }), 50); }],
-    ["doc", "rb_about", () => { setWs("web"); setTimeout(() => $("about").scrollIntoView({ behavior: "smooth" }), 50); }]],
+  help: () => [["keyboard", "rb_shortcuts", shortcuts], ["help", "rb_guide", () => { setRoute("home"); setTimeout(() => $("guide").scrollIntoView({ behavior: "smooth" }), 80); }],
+    ["doc", "rb_about", () => { setRoute("home"); setTimeout(() => $("about").scrollIntoView({ behavior: "smooth" }), 80); }]],
 };
 function openMenu(name, btn) {
   closeMenus(); const drop = document.createElement("div"); drop.className = "mdrop"; drop.id = "mdrop";
@@ -142,29 +140,50 @@ function shortcuts() {
   VF.openModal(t("rb_shortcuts"), box);
 }
 
-/* ---------------- workspaces ---------------- */
-const ws = () => document.documentElement.dataset.ws || "web";
-function setWs(mode) {
-  document.documentElement.dataset.ws = mode; try { localStorage.setItem("vf-ws", mode); } catch (_) {}
-  document.querySelectorAll(".wsbtn").forEach((b) => b.classList.toggle("on", b.dataset.ws === mode));
-  if (mode === "desktop") window.scrollTo(0, 0);
-  sizes(); setTimeout(() => dispatchEvent(new Event("resize")), 60);
+/* ---------------- home page vs. app, full screen ---------------- */
+const APP_VIEWS = ["voice", "video", "timeline", "stt", "audio"];
+function setRoute(route) {
+  document.documentElement.dataset.route = route;
+  if (route === "home") { try { history.replaceState(null, "", "#home"); } catch (_) {} document.title = "Voxa — " + t("home_title"); window.scrollTo(0, 0); }
+  else document.title = "Voxa — " + t("home_title");
+  setTimeout(() => dispatchEvent(new Event("resize")), 50);
 }
-document.querySelectorAll(".wsbtn").forEach((b) => (b.onclick = () => setWs(b.dataset.ws)));
-function sizes() { const ab = $("appbar"); if (ab) document.documentElement.style.setProperty("--appbar-h", ab.offsetHeight + "px"); }
-addEventListener("resize", sizes);
+function openApp(v) { setRoute("app"); VF.showView(v || "voice"); }
+$("goHome").onclick = (e) => { e.preventDefault(); setRoute("home"); };
+$("navHome").onclick = () => setRoute("home");
+document.querySelectorAll("[data-open]").forEach((b) => (b.onclick = () => openApp(b.dataset.open)));
+$("openApp").onclick = () => openApp(view() === "home" ? "voice" : view());
+document.querySelectorAll(".feat[data-go], nav [data-go]").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); e.stopImmediatePropagation(); openApp(el.dataset.go); }, true));
+addEventListener("hashchange", () => { const h = view(); if (APP_VIEWS.includes(h)) { if (document.documentElement.dataset.route !== "app") setRoute("app"); } else if (h === "home" || h === "") setRoute("home"); });
+function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function toggleFull(el) {
+  if (isFull()) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  const target = el || $("studio"); const req = target.requestFullscreen || target.webkitRequestFullscreen;
+  if (req) req.call(target).catch(() => VF.toast(t("full_fail"), true)); else VF.toast(t("full_fail"), true);
+}
+$("maxBtn").onclick = () => toggleFull();
+$("appLang").onclick = () => $("langBtn").click();
+document.addEventListener("fullscreenchange", () => { $("maxBtn").innerHTML = icon(isFull() ? "minimize" : "maximize"); $("maxBtn").title = t(isFull() ? "rb_restore" : "rb_maximize"); dispatchEvent(new Event("resize")); });
+// full-screen buttons on every preview area
+function addMax(host) { if (!host || host.querySelector(":scope > .pmax")) return; const b = document.createElement("button"); b.className = "pmax"; b.type = "button";
+  b.innerHTML = icon("maximize"); b.title = t("rb_maximize"); b.onclick = (e) => { e.stopPropagation(); toggleFull(host); }; host.style.position = host.style.position || "relative"; host.appendChild(b); }
+window.VFShell = { addMax, toggleFull, openApp, setRoute };
 
 /* ---------------- Video Studio sub-tabs ---------------- */
 function vtab(name) {
-  document.querySelectorAll("#vTabs .stab").forEach((b) => b.classList.toggle("on", b.dataset.vt === name));
+  if (name === "timeline") { if (view() !== "timeline") VF.showView("timeline"); markTabs("timeline"); return; }
+  lastVtab = name;
+  if (view() !== "video") VF.showView("video");
+  markTabs(name);
   document.querySelectorAll("#viewVideo [data-vtab]").forEach((c) => (c.style.display = c.dataset.vtab === name ? "" : "none"));
   if (name === "scenes") VF.schedulePreview();
 }
-document.querySelectorAll("#vTabs .stab").forEach((b) => (b.onclick = () => vtab(b.dataset.vt)));
-window.VFShell = { vtab, setWs };
+function markTabs(name) { document.querySelectorAll("#vTabs .stab").forEach((b) => b.classList.toggle("on", b.dataset.vt === name)); }
+document.querySelectorAll("#vTabs .stab").forEach((b) => (b.onclick = () => { if (b.dataset.vt !== "timeline") lastVtab = b.dataset.vt; vtab(b.dataset.vt); }));
+Object.assign(window.VFShell, { vtab });
 
 /* ---------------- document title + status ---------------- */
-function syncTitle() { $("docTitle").value = $("pName").value; $("docStatus").textContent = $("pStatus").textContent; $("docStatus").className = $("pStatus").className;
+function syncTitle() { $("docTitle").value = $("pName").value; $("docStatus").textContent = $("pStatus").textContent;
   $("sbProject").textContent = ($("pName").value || t("untitled")) + " · " + $("pStatus").textContent; }
 $("docTitle").addEventListener("input", (e) => { $("pName").value = e.target.value; $("pName").dispatchEvent(new Event("input")); });
 new MutationObserver(syncTitle).observe($("pStatus"), { childList: true, characterData: true, subtree: true, attributes: true });
@@ -176,9 +195,33 @@ addEventListener("keydown", (e) => {
   else if (mod && k === "o") { e.preventDefault(); $("pOpen").click(); }
 });
 
-function refresh() { drawRibbon(); syncTitle(); sizes(); $("sbBuild").textContent = $("buildInfo").textContent; }
-VF.on("view", () => { drawRibbon(); sizes(); });
+const HEAD = {   // [icon, label, action, primary]
+  voice: [["play", "rb_preview", click("previewBtn")], ["download", "rb_export_mp3", click("exportBtn"), true]],
+  video: [["new", "rb_new", click("pNew")], ["open", "rb_open", click("pOpen")], ["save", "rb_save", click("pSave")], ["play", "rb_play_preview", click("vPlayAll")],
+    ["film", "rb_export_video", () => { vtab("export"); $("renderBtn").scrollIntoView({ block: "center" }); }, true]],
+  timeline: [["new", "rb_new", click("pNew")], ["open", "rb_open", click("pOpen")], ["save", "rb_save", click("pSave")], ["film", "rb_export_mp4", click("tlExport"), true]],
+  stt: [["mic", "rb_listen", click("sttBtn"), true], ["file", "rb_txt", click("sttTxt")]],
+  audio: [["open", "rb_import_sound", click("aeFile")], ["download", "rb_export_mp3", click("aeMp3"), true]],
+};
+function drawHead() {
+  const box = $("hactions"); box.innerHTML = "";
+  (HEAD[view()] || []).forEach(([ic, k, fn, primary]) => { const b = document.createElement("button"); b.className = "hbtn" + (primary ? " primary" : ""); b.type = "button";
+    b.innerHTML = icon(ic) + "<span></span>"; b.lastChild.textContent = t(k); b.title = t(k); b.onclick = () => fn(); box.appendChild(b); });
+  $("maxBtn").innerHTML = icon(isFull() ? "minimize" : "maximize"); $("maxBtn").title = t(isFull() ? "rb_restore" : "rb_maximize");
+  document.querySelectorAll(".snav .si[data-ic]").forEach((e) => { if (!e.firstChild) e.innerHTML = icon(e.dataset.ic); });
+  const mod = view() === "timeline" ? "video" : view();
+  document.documentElement.dataset.module = mod;
+  $("tabVideo").classList.toggle("on", mod === "video");
+  if (view() === "timeline") markTabs("timeline"); else if (view() === "video") markTabs(lastVtab);
+}
+function refresh() { $("appLang").textContent = VF.ui === "ar" ? "EN" : "ع"; drawRibbon(); drawHead(); syncTitle(); $("sbBuild").textContent = $("buildInfo").textContent; }
+VF.on("view", () => { drawRibbon(); drawHead(); });
 VF.on("ui", () => { refresh(); });
-VF.on("ready", () => { setWs(ws()); vtab("scenes"); refresh(); setTimeout(refresh, 800); });
+VF.on("ready", () => {
+  if (APP_VIEWS.includes(initialHash)) { setRoute("app"); VF.showView(initialHash); } else setRoute("home");
+  vtab_init(); refresh(); setTimeout(refresh, 800);
+  addMax($("pWrap")); addMax($("tlStageWrap"));
+});
+function vtab_init() { document.querySelectorAll("#viewVideo [data-vtab]").forEach((c) => (c.style.display = c.dataset.vtab === "scenes" ? "" : "none")); }
 VF.on("project", syncTitle);
 })();

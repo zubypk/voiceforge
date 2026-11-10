@@ -7,7 +7,7 @@ const voiceCache = new Map();     // key -> object URL
 let session = 0;
 
 async function slideUrl(payload, i) {
-  const blob = await (await VF.postJson("/api/video/preview", { project: payload, index: i, stickers: true })).blob();
+  const blob = await (await VF.postJson("/api/video/preview", { project: payload, index: i, stickers: true, caption: false })).blob();
   return URL.createObjectURL(blob);
 }
 async function voiceUrl(scene, voice) {
@@ -35,8 +35,10 @@ async function playAll() {
   const box = document.createElement("div"); box.className = "vp";
   box.innerHTML = `<div class="vp-stage"><img class="vp-a" alt=""><img class="vp-b" alt=""><div class="vp-cap"></div><div class="vp-load"></div></div>
     <div class="vp-ctl"><button class="btn sm" data-a="prev">⏮</button><button class="btn sm primary" data-a="pause">❚❚</button><button class="btn sm" data-a="next">⏭</button>
-    <div class="vp-bar"><i></i></div><span class="hint vp-n"></span></div>`;
-  const [a, b] = box.querySelectorAll("img"), cap = box.querySelector(".vp-cap"), load = box.querySelector(".vp-load"), bar = box.querySelector(".vp-bar i"), cnt = box.querySelector(".vp-n");
+    <span class="hint vp-n"></span></div><input type="range" class="scrub vp-scrub" min="0" max="1000" value="0" aria-label="Seek">`;
+  const [a, b] = box.querySelectorAll("img"), cap = box.querySelector(".vp-cap"), load = box.querySelector(".vp-load"), cnt = box.querySelector(".vp-n");
+  const scrub = box.querySelector(".vp-scrub"); let dragging = false;
+  const bar = { style: {} };     // progress now lives in the scrub bar
   const stage = box.querySelector(".vp-stage"); const [rw, rh] = p.ratio.split(":").map(Number); stage.style.aspectRatio = `${rw} / ${rh}`;
   const voice = new Audio(), music = p.music && p.music.asset ? new Audio(`/api/assets/${p.music.asset}/file`) : null, sfx = new Audio();
   if (music) { music.loop = true; music.volume = Math.min(1, p.music.volume || 0.15); }
@@ -52,11 +54,11 @@ async function playAll() {
   box.querySelector('[data-a="next"]').onclick = () => next();
   box.querySelector('[data-a="prev"]').onclick = () => { idx = Math.max(0, idx - 2); next(); };
   function tick() { if (paused || my !== session) return; const el = (performance.now() - sceneStart) / 1000;
-    bar.style.width = Math.min(100, ((idx - 1) + Math.min(1, el / sceneDur)) / n * 100) + "%";
+    if (!dragging) scrub.value = Math.round(Math.min(1, ((idx - 1) + Math.min(1, el / sceneDur)) / n) * 1000);
     const s = payload.scenes[idx - 1], ch = s && p.captions ? chunks(s.narration) : [];
     if (ch.length) { const speak = Math.max(0.5, sceneDur - 0.5), k = Math.min(ch.length - 1, Math.floor(el / speak * ch.length)); cap.textContent = ch[k]; cap.style.display = ""; } else cap.style.display = "none";
     raf = requestAnimationFrame(tick); }
-  async function show(i) {
+  async function show(i, offset = 0) {
     load.textContent = tf("vp_loading", i + 1, n); load.style.display = "grid";
     let item; try { item = await prepare(i); } catch (e) { load.textContent = e.message; return; }
     if (my !== session) return; load.style.display = "none"; prepare(i + 1);   // prefetch the next scene
@@ -64,17 +66,28 @@ async function playAll() {
     back.src = item.url; back.style.filter = LOOK_CSS[s.look] || "none";
     const mv = MOTION_CSS[s.motion]; back.getAnimations().forEach((x) => x.cancel());
     sceneDur = s.duration || (item.len ? Math.max(2, item.len + 0.5) : 5);
-    if (mv) back.animate([{ transform: mv[0] }, { transform: mv[1] }], { duration: sceneDur * 1000, fill: "forwards", easing: "linear" }); else back.style.transform = "none";
+    if (mv) { const an = back.animate([{ transform: mv[0] }, { transform: mv[1] }], { duration: sceneDur * 1000, fill: "forwards", easing: "linear" }); an.currentTime = Math.min(offset, sceneDur) * 1000; if (paused) an.pause(); }
+    else back.style.transform = "none";
     const prevT = i ? payload.scenes[i - 1].transition : "fade", fadeMs = prevT === "none" ? 0 : 450;
     const dir = /left/.test(prevT) ? -1 : /right/.test(prevT) ? 1 : 0;
     back.animate([{ opacity: 0, translate: `${dir * 6}% 0` }, { opacity: 1, translate: "0 0" }], { duration: fadeMs || 1, fill: "forwards" });
     back.style.zIndex = 2; front.style.zIndex = 1; front = back;
     cnt.textContent = tf("vp_scene", i + 1, n);
-    voice.pause(); if (item.v) { voice.src = item.v; voice.currentTime = 0; voice.play().catch(() => {}); }
+    voice.pause(); if (item.v) { if (voice.src !== new URL(item.v, location.href).href) voice.src = item.v; voice.currentTime = Math.min(offset, item.len || offset); if (!paused) voice.play().catch(() => {}); }
     if (s.sfx && s.sfx.asset) { sfx.src = `/api/assets/${s.sfx.asset}/file`; sfx.volume = Math.min(1, s.sfx.volume == null ? 0.8 : s.sfx.volume); setTimeout(() => { if (my === session && !paused) sfx.play().catch(() => {}); }, (s.sfx.at || 0) * 1000); }
     if (music && music.paused && !paused) music.play().catch(() => {});
-    sceneStart = performance.now(); clearTimeout(timer); timer = setTimeout(next, sceneDur * 1000); cancelAnimationFrame(raf); tick();
+    sceneStart = performance.now() - offset * 1000; clearTimeout(timer); cancelAnimationFrame(raf);
+    if (paused) { pauseAt = performance.now(); return; }
+    timer = setTimeout(next, Math.max(0, sceneDur - offset) * 1000); tick();
   }
+  // scrubbing: drag anywhere across all scenes
+  scrub.oninput = () => { dragging = true; const v = scrub.value / 1000 * n, i = Math.min(n - 1, Math.floor(v)); cnt.textContent = tf("vp_scene", i + 1, n); };
+  scrub.onchange = async () => {
+    const v = scrub.value / 1000 * n, i = Math.min(n - 1, Math.floor(v)); clearTimeout(timer); cancelAnimationFrame(raf); sfx.pause();
+    let item; try { item = await prepare(i); } catch (_) { dragging = false; return; }
+    const dur = payload.scenes[i].duration || (item.len ? Math.max(2, item.len + 0.5) : 5);
+    idx = i + 1; dragging = false; await show(i, (v - i) * dur);
+  };
   function next() { if (my !== session) return; if (idx >= n) { stopAll(); bar.style.width = "100%"; cap.style.display = "none"; return; } show(idx++); }
   next();
 }

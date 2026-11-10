@@ -166,7 +166,7 @@ cv.addEventListener("pointerdown", (e) => {
   if (!A) return; const r = cv.getBoundingClientRect(), toS = (cx) => Math.round(view.a + Math.min(1, Math.max(0, (cx - r.left) / r.width)) * (view.b - view.a));
   const s0 = toS(e.clientX); cursor = s0; sel = null; cv.setPointerCapture(e.pointerId); draw();
   cv.onpointermove = (m) => { const s1 = toS(m.clientX); sel = Math.abs(s1 - s0) > 50 ? [Math.min(s0, s1), Math.max(s0, s1)] : null; draw(); };
-  cv.onpointerup = () => { cv.onpointermove = null; if (sel) cursor = sel[0]; refresh(); };
+  cv.onpointerup = () => { cv.onpointermove = null; if (sel) cursor = sel[0]; refresh(); if (src && !sel) play(false); };   // scrub while playing
 });
 function zoom(f) {
   if (!A) return; const span = view.b - view.a, ns = Math.max(Math.min(len(), 2000), Math.min(len(), Math.round(span / f))), center = sel ? (sel[0] + sel[1]) / 2 : cursor;

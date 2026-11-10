@@ -523,7 +523,8 @@ def api_video_preview():
         # Only the selected scene is validated, so other unfinished scenes never block the preview.
         assets = _assets()
         project = video.validate_project({**raw, "scenes": [scenes[index]]}, assets, allow_empty=True)
-        png = video.render_preview_png(project, 0, assets, stickers=data.get("stickers", True) is not False)
+        png = video.render_preview_png(project, 0, assets, stickers=data.get("stickers", True) is not False,
+                                       caption=data.get("caption", True) is not False)
     except (video.VideoError, ValueError) as exc:
         return _error(exc)
     return send_file(io.BytesIO(png), mimetype="image/png")

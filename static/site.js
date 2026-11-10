@@ -9,6 +9,7 @@ function setTheme(name) {
   if (!THEMES[name]) name = "midnight";
   document.documentElement.dataset.theme = name; try { localStorage.setItem("vf-theme", name); } catch (_) {}
   document.querySelectorAll(".tdot").forEach((d) => d.classList.toggle("on", d.dataset.t === name));
+  document.querySelectorAll("img[data-light][data-dark]").forEach((im) => (im.src = name in LIGHT ? im.dataset.light : im.dataset.dark));
   window.dispatchEvent(new Event("resize"));   // redraw canvases with the new accent colour
 }
 function drawPicker() {

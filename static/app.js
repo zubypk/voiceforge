@@ -174,7 +174,14 @@ const audioProgress = () => { const d = els.audio.duration; return isFinite(d) &
 els.audio.ontimeupdate = () => { els.time.textContent = `${fmtTime(els.audio.currentTime)} / ${fmtTime(els.audio.duration)}`; drawWave(audioProgress()); };
 els.audio.onplay = () => (els.play.textContent = t("pause")); els.audio.onpause = els.audio.onended = () => (els.play.textContent = t("play"));
 els.play.onclick = () => { if (els.audio.src) els.audio.paused ? els.audio.play() : els.audio.pause(); };
-els.wave.onclick = (e) => { if (!els.audio.duration) return; const r = els.wave.getBoundingClientRect(); els.audio.currentTime = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * els.audio.duration; drawWave(audioProgress()); };
+// scrub: click or drag across the waveform
+els.wave.style.touchAction = "none";
+els.wave.onpointerdown = (e) => {
+  if (!els.audio.duration) return; const r = els.wave.getBoundingClientRect();
+  const go = (x) => { els.audio.currentTime = Math.min(1, Math.max(0, (x - r.left) / r.width)) * els.audio.duration; drawWave(audioProgress()); };
+  go(e.clientX); els.wave.setPointerCapture(e.pointerId);
+  els.wave.onpointermove = (m) => go(m.clientX); els.wave.onpointerup = () => { els.wave.onpointermove = null; };
+};
 addEventListener("resize", () => drawWave(audioProgress()));
 async function computePeaks(buf, bins = 900) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();

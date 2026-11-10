@@ -975,7 +975,7 @@ def canvas_size(project: dict) -> tuple[int, int]:
 # ----------------------------------------------------------------------------- preview
 
 def render_preview_png(project: dict, index: int, assets: AssetStore | None, max_width: int = 960,
-                       stickers: bool = True) -> bytes:
+                       stickers: bool = True, caption: bool = True) -> bytes:
     import io
 
     scene = project["scenes"][index]
@@ -998,7 +998,7 @@ def render_preview_png(project: dict, index: int, assets: AssetStore | None, max
                     media_img = im.convert("RGB")
         frame = look_pil(base_frame(project, scene, size, assets, bg_still), scene.get("look", "none")).convert("RGBA")
         cap = None
-        if project["captions"] and scene["narration"]:
+        if caption and project["captions"] and scene["narration"]:
             cap = (split_captions(scene["narration"]) or [""])[0]
         frame.alpha_composite(render_overlay(project, scene, size, cap, scene["background"]["type"] in ("image", "video"), media_img))
         if stickers:
