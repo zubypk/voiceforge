@@ -45,6 +45,9 @@ The server needs outbound HTTPS access to Microsoft's speech service. `imageio-f
 | `COOKIE_SECURE=1` | Set when serving over HTTPS |
 | `ALLOWED_ORIGIN` | CORS origin for the API (default `*`) |
 | `VF_FONT_DIR` | Extra fonts for slides (see below) |
+| `ADSENSE_CLIENT` | Google AdSense publisher id (`ca-pub-…`). Enables ads in three fixed spots (never inside the editors) and serves `/ads.txt` |
+| `ADSENSE_SLOTS` | Optional ad unit ids: `top=…,middle=…,footer=…` (without it, AdSense Auto ads are used) |
+| `VF_RATE_LIMITS=0` | Disable the per-client rate limits (on by default) |
 | `OPENVERSE_API` | Online library endpoint (default `https://api.openverse.org/v1`) |
 | `VF_MAX_TEXT_CHARS` | Max characters per MP3 (default `100000`; `0` = unlimited). Long texts are chunked and run as background jobs |
 
@@ -90,6 +93,14 @@ The voice must match the language of the text. Arabic text with a French voice, 
 ## Fonts for slides
 
 Arabic, Latin, Cyrillic and Greek work with DejaVu Sans. Other scripts need a matching system font (the Docker image installs Noto fonts; build with `--build-arg INSTALL_CJK=1` for Chinese/Japanese/Korean). Narration works for every language regardless.
+
+## Security
+
+- Per-client rate limits on every expensive endpoint (render, TTS, translate, import, uploads, library); proxy headers are trusted only from the local proxy.
+- Security headers: Content-Security-Policy, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy (microphone only for this site), HSTS over HTTPS.
+- Same-origin API by default (set `ALLOWED_ORIGIN` to allow another site).
+- Uploads: size limits, strict IDs (no path traversal), image re-validation, and a media-container allow-list so playlists disguised as video/audio can't make ffmpeg read local files or URLs. Online media is fetched by Openverse id only (no arbitrary URLs).
+- Cookies are HttpOnly, SameSite=Lax, Secure over HTTPS.
 
 ## Build number
 

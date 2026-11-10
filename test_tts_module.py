@@ -239,9 +239,10 @@ def test_api_language_gender_picks_voice(client, mp3_bytes, fake_service):
     assert fake_service.last["voice"] == "ar-SA-HamedNeural"
 
 
-def test_cors_header_present(client):
-    r = client.get("/api/voices")
-    assert r.headers["Access-Control-Allow-Origin"] == "*"
+def test_cors_only_when_configured(client, monkeypatch):
+    assert "Access-Control-Allow-Origin" not in client.get("/api/voices").headers     # same-origin by default
+    monkeypatch.setenv("ALLOWED_ORIGIN", "https://example.org")
+    assert client.get("/api/voices").headers["Access-Control-Allow-Origin"] == "https://example.org"
 
 
 def test_bad_language_gender_is_400(client, fake_service):

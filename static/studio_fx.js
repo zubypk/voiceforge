@@ -239,6 +239,9 @@ function onScene() {
   const s = S(); if (!s) return;
   $("sMotion").value = s.motion || "none"; $("sLook").value = s.look || "none"; $("sTrans").value = s.transition || "fade";
   renderVo(); renderSfx(); renderLayers();
+  const used = { fxBox: (s.motion && s.motion !== "none") || (s.look && s.look !== "none") || !["fade", "none"].includes(s.transition),
+    voBox: !!(s.voiceover && s.voiceover.asset), layerBox: !!(s.stickers && s.stickers.length), sfxBox: !!(s.sfx && s.sfx.asset) };
+  Object.entries(used).forEach(([id, on]) => { $(id).classList.toggle("used", on); if (on) $(id).open = true; });
   if (s.background.type === "image" && !$("bgFree")) {
     const b = el("button", "btn sm", t("lib_free_photo")); b.id = "bgFree"; b.style.marginTop = "6px"; b.style.width = "100%";
     b.onclick = async () => { const a = await openLibrary("background"); if (a) { const sc = S(); sc.background.asset = a.id; sc.background.assetName = a.name; VF.loadSceneFields(); changed(); } };

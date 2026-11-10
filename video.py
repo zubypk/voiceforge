@@ -741,6 +741,10 @@ class AssetStore:
                 raise VideoError("Video is too large." if is_video else "Audio file is too large.")
             dest = self.root / f"{asset_id}.{(self.VIDEO_EXT if is_video else self.AUDIO_EXT)[ext]}"
             dest.write_bytes(data)
+            import security
+            if not security.media_format_ok(_run([ffmpeg_bin(), "-hide_banner", "-i", str(dest)], 60).stderr):
+                dest.unlink(missing_ok=True)     # e.g. an HLS/concat playlist renamed to .mp4 (could read local files)
+                raise VideoError("That file is not a supported video or audio file.")
             if not is_video and ext in (".weba", ".opus", ".oga"):
                 # browser microphone recordings (WebM/Ogg Opus) have no duration header: store them as MP3
                 mp3 = self.root / f"{asset_id}.mp3"

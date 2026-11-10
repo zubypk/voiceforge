@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>try{document.documentElement.dataset.theme=localStorage.getItem("vf-theme")||"midnight"}catch(e){}</script>
+<script src="/static/theme-boot.js"></script>
 <title>VoiceForge — Text to Speech &amp; Video Studio</title>
 <meta name="description" content="Natural voices in more than 70 languages (Arabic first) and a video studio for educational videos with narration, captions, YouTube/Shorts/Instagram presets, up to 4K MP4 export.">
 <style>
@@ -12,6 +12,12 @@
     --nav:rgba(11,13,20,.72);--modal:#141826;--input:rgba(0,0,0,.28);--toast:#1c2236;--glow1:rgba(124,92,255,.22);--glow2:rgba(62,166,255,.16);--shadow:0 10px 30px rgba(0,0,0,.25);--on-grad:#fff}
   html[data-theme=daylight]{--bg:#f5f7fb;--card:#ffffff;--card2:#f1f4fa;--line:#e2e7f0;--text:#152039;--muted:#5b6782;--accent:#2f6bff;--accent2:#00a3a3;
     --grad:linear-gradient(135deg,#2f6bff 0%,#00b3a4 100%);--nav:rgba(255,255,255,.85);--modal:#ffffff;--input:#ffffff;--toast:#ffffff;--glow1:rgba(47,107,255,.10);--glow2:rgba(0,179,164,.08);--shadow:0 8px 26px rgba(21,32,57,.08)}
+  html[data-theme=paper]{--bg:#faf7f0;--card:#ffffff;--card2:#f5f0e6;--line:#e8e0d0;--text:#2b2420;--muted:#7a6e62;--accent:#d9480f;--accent2:#e67700;
+    --grad:linear-gradient(135deg,#e8590c 0%,#f59f00 100%);--nav:rgba(250,247,240,.88);--modal:#ffffff;--input:#ffffff;--toast:#ffffff;--glow1:rgba(232,89,12,.08);--glow2:rgba(245,159,0,.07);--shadow:0 8px 24px rgba(43,36,32,.07)}
+  html[data-theme=mint]{--bg:#f2faf6;--card:#ffffff;--card2:#eaf6f0;--line:#d6ebe0;--text:#12312a;--muted:#55756b;--accent:#0c9f6e;--accent2:#12b886;
+    --grad:linear-gradient(135deg,#099268 0%,#20c997 100%);--nav:rgba(242,250,246,.88);--modal:#ffffff;--input:#ffffff;--toast:#ffffff;--glow1:rgba(9,146,104,.08);--glow2:rgba(32,201,151,.07);--shadow:0 8px 24px rgba(18,49,42,.07)}
+  html[data-theme=sky]{--bg:#f3f7ff;--card:#ffffff;--card2:#ebf1fd;--line:#d9e3f5;--text:#14213d;--muted:#5a6a8a;--accent:#7048e8;--accent2:#4c6ef5;
+    --grad:linear-gradient(135deg,#7048e8 0%,#4dabf7 100%);--nav:rgba(243,247,255,.88);--modal:#ffffff;--input:#ffffff;--toast:#ffffff;--glow1:rgba(112,72,232,.08);--glow2:rgba(77,171,247,.08);--shadow:0 8px 24px rgba(20,33,61,.07)}
   html[data-theme=ocean]{--bg:#06141f;--card:rgba(120,200,255,.05);--card2:rgba(120,200,255,.09);--line:rgba(140,210,255,.14);--text:#e8f6ff;--muted:#8fb3c9;--accent:#00b4d8;--accent2:#48cae4;
     --grad:linear-gradient(135deg,#0077b6 0%,#00b4d8 100%);--nav:rgba(6,20,31,.8);--modal:#0b2030;--toast:#0f2a3d;--glow1:rgba(0,180,216,.2);--glow2:rgba(0,119,182,.2)}
   html[data-theme=sunset]{--bg:#170c12;--card:rgba(255,190,150,.05);--card2:rgba(255,190,150,.09);--line:rgba(255,190,150,.14);--text:#fff3ec;--muted:#c9a597;--accent:#ff6b4a;--accent2:#ffb347;
@@ -137,6 +143,29 @@
   .kv{display:grid;grid-template-columns:170px 1fr;gap:8px 14px;font-size:14px}.kv div:nth-child(odd){color:var(--muted)}
   details{border-top:1px solid var(--line);padding:12px 0}details:first-of-type{border-top:0}summary{cursor:pointer;font-weight:600}details p{color:var(--muted);margin:8px 0 0}
   footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px;text-align:center}
+  /* ---- simple layout, ticker, collapsible panels, ads ---- */
+  .hero{padding:30px 0 10px}.hero p{margin-bottom:6px}.stats{display:none}
+  .features{margin-top:18px}.feat{padding:14px}.feat i{width:36px;height:36px;font-size:19px;margin-bottom:8px}
+  details.adv{border:1px solid var(--line);padding:0 14px;margin-top:10px}
+  details.adv>summary{list-style:none;cursor:pointer;padding:13px 0;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+  details.adv[open]{padding-bottom:14px}
+  details.adv>summary::-webkit-details-marker{display:none}
+  details.adv>summary::after{content:"＋";margin-inline-start:auto;color:var(--muted);font-weight:400}
+  details.adv[open]>summary::after{content:"－"}
+  details.adv>summary:hover{color:var(--accent)}
+  details.adv.used>summary::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+  .marquee{overflow:hidden;white-space:nowrap;border-bottom:1px solid var(--line);background:var(--card2);font-size:13px;color:var(--muted);direction:ltr;
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .mq-track{display:inline-flex;gap:0;padding:8px 0;animation:mq 45s linear infinite;will-change:transform}
+  .marquee:hover .mq-track{animation-play-state:paused}
+  html[dir=rtl] .mq-track{animation-name:mq-rtl}
+  .mq-track span{padding:0 22px;position:relative}.mq-track span::after{content:"•";position:absolute;inset-inline-end:-4px;color:var(--accent)}
+  .mq-track b{color:var(--text);font-weight:600}
+  @keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes mq-rtl{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+  @media (prefers-reduced-motion: reduce){.mq-track{animation:none}.marquee{overflow-x:auto}}
+  .ad-slot{margin:18px 0;text-align:center;min-height:90px}.ad-slot .ad-label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+  .theme-pick{gap:5px}.tdot{width:18px;height:18px}.theme-sep{width:1px;height:16px;background:var(--line);margin:0 3px}
   /* ---- extras: themes picker, live recording, layers, library, audio editor, features ---- */
   .theme-pick{display:flex;gap:6px;align-items:center}
   .tdot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
@@ -201,6 +230,8 @@
   <button class="chip" id="langBtn">العربية</button>
 </div></nav>
 
+<div class="marquee" id="marquee" role="marquee" aria-label="What's new"><div class="mq-track" id="mqTrack"></div></div>
+
 <main class="wrap" id="top">
 <header class="hero">
   <span class="badge" data-i="badge">Natural voices · Video studio · Arabic first</span>
@@ -221,6 +252,7 @@
     <div class="feat" data-go="video"><i>🎤</i><b data-i="f6_t">Your own voice</b><span data-i="f6_d">Record a voice-over for any scene with live captions.</span></div>
   </div>
 </header>
+<div class="ad-slot" data-ad="top" hidden></div>
 
 <section id="studio">
   <div class="tabs">
@@ -253,7 +285,9 @@
         <button class="btn sm" id="fixVoice" data-i="mismatch_fix_voice">Switch to a matching voice</button>
         <button class="btn sm" id="fixText" data-i="mismatch_fix_text">Use a sample in this language</button>
       </div>
-      <div class="row" id="trRow" style="align-items:flex-end">
+      <details class="sub-card adv" id="trBox">
+      <summary data-i="tr_box">🌐 Translate or dictate</summary>
+      <div class="row" id="trRow" style="align-items:flex-end;margin-top:6px">
         <div style="flex:1;min-width:180px"><label for="trLang" data-i="tr_to">Translate text to</label><select id="trLang"></select></div>
         <button class="btn" id="trBtn" data-i="tr_go">🌐 Translate</button>
         <button class="btn" id="trUndo" data-i="tr_undo" style="display:none">↩ Undo</button>
@@ -262,6 +296,7 @@
         <div style="min-width:180px"><label for="trMicLang" data-i="tr_speak_in">Speak in</label><select id="trMicLang"></select></div>
         <button class="btn rec" id="trMic" data-i="tr_mic">🎤 Dictate</button>
       </div>
+      </details>
       <div class="row">
         <button class="btn primary" id="previewBtn" data-i="preview">▶ Preview</button>
         <button class="btn" id="exportBtn" data-i="export">⬇ Export MP3</button>
@@ -396,18 +431,18 @@
             <div id="bgExtra"></div>
             <div><label for="sDur" data-i="v_dur">Duration (seconds)</label><input type="number" id="sDur" min="2" max="600" step="0.5" placeholder="auto"><span class="hint" data-i="v_dur_h"></span></div>
           </div>
-          <div class="sub-card" id="fxBox">
-            <label data-i="fx_title">✨ Effects &amp; transitions</label>
+          <details class="sub-card adv" id="fxBox">
+            <summary data-i="fx_title">✨ Effects &amp; transitions</summary>
             <div class="grid3">
               <div><label for="sMotion" data-i="fx_motion">Motion</label><select id="sMotion"></select></div>
               <div><label for="sLook" data-i="fx_look">Look / filter</label><select id="sLook"></select></div>
               <div><label for="sTrans" data-i="v_trans">Transition to next scene</label><select id="sTrans"></select></div>
             </div>
             <div class="hint" style="margin-top:6px" data-i="fx_hint">Motion and looks apply to the background. Left/right transitions are mirrored automatically for Arabic and other right-to-left scenes.</div>
-          </div>
+          </details>
 
-          <div class="sub-card" id="voBox">
-            <label data-i="vo_title">🎤 Your own voice (voice-over)</label>
+          <details class="sub-card adv" id="voBox">
+            <summary data-i="vo_title">🎤 Your own voice (voice-over)</summary>
             <div class="hint" data-i="vo_hint">Record yourself for this scene instead of the AI voice. Captions can be typed live from your speech.</div>
             <canvas id="voWave" class="mini"></canvas>
             <div class="row">
@@ -421,17 +456,17 @@
               <button class="btn sm danger" id="voDel" data-i="v_media_remove">Remove</button>
             </div>
             <div class="row"><button class="btn sm" id="voPick" data-i="vo_pick">Use an audio file…</button></div>
-          </div>
+          </details>
 
-          <div class="sub-card" id="layerBox">
-            <label data-i="ly_title">🧩 Layers: clip art, shapes, photos</label>
+          <details class="sub-card adv" id="layerBox">
+            <summary data-i="ly_title">🧩 Layers: clip art, shapes, photos</summary>
             <div class="hint" data-i="ly_hint">Drag layers on the preview to move them. Each layer can animate in.</div>
             <div id="layerList" class="plist"></div>
             <div class="row"><button class="btn sm" id="addLayer" data-i="ly_add">＋ Add clip art / shape / photo</button></div>
-          </div>
+          </details>
 
-          <div class="sub-card" id="sfxBox">
-            <label data-i="sx_title">🔊 Sound effect</label>
+          <details class="sub-card adv" id="sfxBox">
+            <summary data-i="sx_title">🔊 Sound effect</summary>
             <div class="row" style="margin-top:0">
               <button class="btn sm" id="sfxPick" data-i="sx_pick">Choose a sound effect…</button>
               <span class="hint" id="sfxName"></span>
@@ -441,7 +476,7 @@
               <div><label for="sfxVol"><span data-i="sx_vol">Volume</span><span class="val" id="sfxVolVal">80%</span></label><input type="range" id="sfxVol" min="0" max="200" value="80"></div>
             </div>
             <div class="row" id="sfxDelRow" style="display:none"><button class="btn sm danger" id="sfxDel" data-i="v_media_remove">Remove</button></div>
-          </div>
+          </details>
 
           <div style="margin-top:14px">
             <div class="row" style="margin-top:0"><span class="lbl" style="margin:0" data-i="v_preview">Slide preview</span><span class="hint" id="prevNote"></span></div>
@@ -558,6 +593,7 @@
 
 </section>
 
+<div class="ad-slot" data-ad="middle" hidden></div>
 <section id="guide">
   <h2 data-i="guide_t">How to use it</h2>
   <p class="sub" data-i="guide_s"></p>
@@ -625,6 +661,7 @@ curl -X POST <span class="origin"></span>/api/export -H "Content-Type: applicati
     </div></div>
 </section>
 </main>
+<div class="wrap"><div class="ad-slot" data-ad="footer" hidden></div></div>
 <footer><div class="wrap"><span data-i="foot"></span><br><span class="build" id="buildInfo"></span></div></footer>
 
 <div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><b id="mTitle"></b><button class="chip" id="mClose" data-i="close">Close</button></div><div id="mBody"></div></div></div>
@@ -639,5 +676,6 @@ curl -X POST <span class="origin"></span>/api/export -H "Content-Type: applicati
 <script src="/static/stt.js"></script>
 <script src="/static/audio_editor.js"></script>
 <script src="/static/site.js"></script>
+<script src="/static/ads.js"></script>
 </body>
 </html>

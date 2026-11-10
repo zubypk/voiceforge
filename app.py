@@ -24,6 +24,7 @@ from flask import Flask, g, jsonify, render_template, request, send_file, sessio
 import doc_import
 import library
 import projects as projects_mod
+import security
 import translate as translate_mod
 import tts_module as tts
 import video
@@ -44,6 +45,24 @@ projects = projects_mod.ProjectStore(DATA_DIR / "projects")
 jobs.referenced_fn = projects.referenced_assets   # saved projects keep their media
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+
+
+def _adsense():
+    """ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXX enables Google AdSense. Optional ADSENSE_SLOTS="top=123,middle=456,footer=789"
+    uses fixed ad units; without slots, AdSense Auto ads decide placement."""
+    import re as _re
+    client = os.environ.get("ADSENSE_CLIENT", "").strip()
+    if not _re.fullmatch(r"ca-pub-\d{10,20}", client):
+        return "", {}
+    slots = {}
+    for part in os.environ.get("ADSENSE_SLOTS", "").split(","):
+        k, _, v = part.partition("=")
+        if k.strip() in ("top", "middle", "footer") and _re.fullmatch(r"\d{6,20}", v.strip()):
+            slots[k.strip()] = v.strip()
+    return client, slots
+
+
+ADSENSE_CLIENT, ADSENSE_SLOTS = _adsense()
 REQUIRE_LOGIN = os.environ.get("REQUIRE_LOGIN") == "1"
 ALLOWED_DOMAINS = {d.strip().lower() for d in os.environ.get("ALLOWED_EMAIL_DOMAINS", "").split(",") if d.strip()}
 SYNC_EXPORT_CHARS = 12_000   # longer exports run as background jobs (proxies cut long requests)
@@ -69,10 +88,24 @@ def after(resp):
     if uid:
         resp.set_cookie("vf_uid", uid, max_age=2 * 365 * 86400, httponly=True, samesite="Lax",
                         secure=os.environ.get("COOKIE_SECURE") == "1")
-    resp.headers["Access-Control-Allow-Origin"] = os.environ.get("ALLOWED_ORIGIN", "*")
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    origin = os.environ.get("ALLOWED_ORIGIN", "").strip()      # same-origin only unless configured
+    if origin:
+        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    security.add_headers(resp, https=os.environ.get("COOKIE_SECURE") == "1", ads=bool(ADSENSE_CLIENT))
     return resp
+
+
+@app.before_request
+def rate_limit():
+    wait = security.check_rate_limit()
+    if wait:
+        resp = jsonify(error=f"Too many requests. Please wait {wait} seconds and try again.")
+        resp.status_code = 429
+        resp.headers["Retry-After"] = str(wait)
+        return resp
+    return None
 
 
 def verify_google_token(credential: str) -> dict:
@@ -121,7 +154,16 @@ BUILD = _build_info()
 
 @app.get("/api/config")
 def api_config():
-    return jsonify(google_client_id=GOOGLE_CLIENT_ID or None, require_login=REQUIRE_LOGIN, build=BUILD)
+    return jsonify(google_client_id=GOOGLE_CLIENT_ID or None, require_login=REQUIRE_LOGIN, build=BUILD,
+                   ads={"client": ADSENSE_CLIENT, "slots": ADSENSE_SLOTS} if ADSENSE_CLIENT else None)
+
+
+@app.get("/ads.txt")
+def ads_txt():
+    """Required by AdSense: authorises Google to sell ads on this site."""
+    if not ADSENSE_CLIENT:
+        return "", 404
+    return (f"google.com, {ADSENSE_CLIENT.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n", 200, {"Content-Type": "text/plain"})
 
 
 @app.get("/api/me")
@@ -234,6 +276,9 @@ def api_audio_convert():
         f.save(src)
         if src.stat().st_size > 200 * 1024 * 1024:
             return jsonify(error="Audio is too large (limit 200 MB)."), 413
+        probe = subprocess.run([video.ffmpeg_bin(), "-hide_banner", "-i", str(src)], capture_output=True, text=True, timeout=60)
+        if not security.media_format_ok(probe.stderr):
+            return jsonify(error="That file is not a supported audio file."), 400
         codec = ["-codec:a", "libmp3lame", "-b:a", "192k"] if fmt == "mp3" else ["-codec:a", "pcm_s16le"]
         proc = subprocess.run([video.ffmpeg_bin(), "-y", "-loglevel", "error", "-i", str(src), "-vn", *codec, str(out)],
                               capture_output=True, text=True, timeout=600)

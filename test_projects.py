@@ -252,3 +252,52 @@ def test_saved_projects_keep_their_media_but_unused_files_expire(client, tmp_pat
     web.jobs.cleanup()
     ids = {a["id"] for a in client.get("/api/assets").get_json()["assets"]}
     assert ids == {kept} and gone not in ids
+
+
+# ---------------------------------------------------------------- security
+
+def test_security_headers_and_no_open_cors():
+    import app as appmod
+    r = appmod.app.test_client().get("/")
+    assert r.headers["X-Content-Type-Options"] == "nosniff" and "frame-ancestors 'self'" in r.headers["Content-Security-Policy"]
+    assert "microphone=(self)" in r.headers["Permissions-Policy"] and "Access-Control-Allow-Origin" not in r.headers
+
+
+def test_rate_limit_returns_429(monkeypatch):
+    import app as appmod
+    import security
+    monkeypatch.setitem(security.LIMITS, "api_translate", (2, 60))
+    security._hits.clear()
+    c = appmod.app.test_client()
+    codes = [c.post("/api/translate", json={"text": ""}, environ_base={"REMOTE_ADDR": "10.0.0.9"}).status_code for _ in range(3)]
+    assert codes[:2] == [400, 400] and codes[2] == 429
+    # another client is not affected; spoofed proxy headers from a non-local address are ignored
+    assert c.post("/api/translate", json={"text": ""}, environ_base={"REMOTE_ADDR": "10.0.0.8"}).status_code == 400
+    assert c.post("/api/translate", json={"text": ""}, headers={"X-Forwarded-For": "1.2.3.4"},
+                  environ_base={"REMOTE_ADDR": "10.0.0.9"}).status_code == 429
+
+
+def test_playlist_disguised_as_video_is_refused(tmp_path):
+    import video
+    store = video.AssetStore(tmp_path / "a")
+    hls = b"#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:10.0,\nfile:///etc/passwd\n#EXT-X-ENDLIST\n"
+    for name in ("evil.mp4", "evil.mp3", "evil.weba"):
+        with pytest.raises(video.VideoError):
+            store.save(hls, name)
+    assert not any(store.root.iterdir())
+
+
+def test_adsense_off_by_default_and_configurable(monkeypatch):
+    import importlib
+    import app as appmod
+    c = appmod.app.test_client()
+    assert c.get("/api/config").get_json()["ads"] is None and c.get("/ads.txt").status_code == 404
+    monkeypatch.setenv("ADSENSE_CLIENT", "ca-pub-1234567890123456")
+    monkeypatch.setenv("ADSENSE_SLOTS", "top=1111111111,bad=1,footer=x")
+    client, slots = appmod._adsense()
+    assert client == "ca-pub-1234567890123456" and slots == {"top": "1111111111"}
+    monkeypatch.setattr(appmod, "ADSENSE_CLIENT", client)
+    assert c.get("/ads.txt").data.decode() == "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n"
+    assert "pagead2.googlesyndication.com" in c.get("/").headers["Content-Security-Policy"]
+    monkeypatch.setenv("ADSENSE_CLIENT", "<script>")
+    assert appmod._adsense() == ("", {})
