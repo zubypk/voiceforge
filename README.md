@@ -95,6 +95,10 @@ Arabic, Latin, Cyrillic and Greek work with DejaVu Sans. Other scripts need a ma
 
 Run `python scripts/stamp_build.py` on each deploy; it writes `build.json` (commit count, commit, Riyadh time) which the footer shows.
 
+## Deploying on a server (no root)
+
+`bash deploy/update.sh` pulls the latest code, installs packages, stamps the build, restarts the app, starts a Cloudflare quick tunnel and installs a crontab watchdog (`deploy/watchdog.sh`, every 5 minutes and after reboot) that restarts the app and tunnel if they stop. The current public link is kept in `PUBLIC_URL.txt`. Add `WITH_OFFICE=1` once to install a portable LibreOffice for Word/Excel/PowerPoint import.
+
 ## Tests
 
 ```bash

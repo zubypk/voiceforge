@@ -68,5 +68,15 @@ if ! pgrep -f "cloudflared.*:$PORT" >/dev/null; then
   setsid nohup "$CF" tunnel --no-autoupdate --url "http://127.0.0.1:$PORT" > tunnel.log 2>&1 < /dev/null &
   sleep 8
 fi
-grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' tunnel.log 2>/dev/null | tail -1 || echo "(tunnel URL not found yet: see tunnel.log)"
+grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' tunnel.log 2>/dev/null | tail -1 > PUBLIC_URL.txt || true
+echo "Demo link: $(cat PUBLIC_URL.txt 2>/dev/null || echo 'not found yet, see tunnel.log')"
+
+log "Auto-restart (crontab: every 5 minutes and after reboot)"
+if command -v crontab >/dev/null; then
+  job="cd $APP_DIR && PORT=$PORT bash deploy/watchdog.sh >/dev/null 2>&1"
+  ( crontab -l 2>/dev/null | grep -v 'deploy/watchdog.sh'; echo "*/5 * * * * $job"; echo "@reboot sleep 30; $job" ) | crontab -
+  echo "Installed. The current link is always in $APP_DIR/PUBLIC_URL.txt"
+else
+  echo "crontab not available: run deploy/watchdog.sh from your own scheduler"
+fi
 echo "Done."

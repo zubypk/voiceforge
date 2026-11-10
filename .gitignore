@@ -8,3 +8,9 @@ out/
 *.mp4
 .pytest_cache/
 build.json
+/PUBLIC_URL.txt
+/watchdog.log
+/tunnel.log
+/server.log
+/cloudflared
+/update.sh
