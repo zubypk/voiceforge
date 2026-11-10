@@ -7,7 +7,7 @@ FROM python:3.12-slim
 ARG INSTALL_CJK=0
 ARG INSTALL_OFFICE=1
 RUN apt-get update \
- && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core fonts-noto-core \
+ && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core fonts-noto-core libraqm0 libfribidi0 libharfbuzz0b \
  && if [ "$INSTALL_CJK" = "1" ]; then apt-get install -y --no-install-recommends fonts-noto-cjk; fi \
  && if [ "$INSTALL_OFFICE" = "1" ]; then apt-get install -y --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui libreoffice-impress-nogui \
       || apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress; fi \
@@ -15,7 +15,8 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt   # includes imageio-ffmpeg (bundled ffmpeg binary)
+RUN pip install --no-cache-dir -r requirements.txt \
+ && python -c "from PIL import features; assert features.check('raqm'), 'Pillow has no libraqm: Arabic text would break'"
 COPY . .
 
 RUN useradd --create-home app && mkdir -p /data && chown app /data
