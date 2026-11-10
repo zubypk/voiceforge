@@ -19,17 +19,32 @@ import argparse
 import asyncio
 import io
 import json
+import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import edge_tts
 
-MAX_TEXT_CHARS = 5000      # full export limit
-MAX_PREVIEW_CHARS = 300    # previews are cut to this length
+DEFAULT_MAX_TEXT_CHARS = 100_000   # ~2 hours of speech; override with VF_MAX_TEXT_CHARS (0 = no limit)
+CHUNK_CHARS = 2500                 # long text is synthesized in pieces of about this size
+MAX_PREVIEW_CHARS = 300            # previews are cut to this length
 RATE_RANGE = (-50, 100)    # percent
 PITCH_RANGE = (-50, 50)    # Hz
 
 SNAPSHOT = Path(__file__).with_name("voices_snapshot.json")
+
+
+def max_text_chars() -> int:
+    """Longest text accepted for one export. 0 means unlimited (set VF_MAX_TEXT_CHARS=0)."""
+    raw = os.environ.get("VF_MAX_TEXT_CHARS")
+    if raw is None or raw.strip() == "":
+        return DEFAULT_MAX_TEXT_CHARS
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return DEFAULT_MAX_TEXT_CHARS
 
 
 class TTSError(ValueError):
@@ -76,8 +91,18 @@ _PREFERRED = {
 }
 
 
+# edge-tts rejects voice names that do not look like "xx-XX-NameNeural" (e.g. Inuktitut "iu-Cans-CA-...").
+_VALID_VOICE_ID = re.compile(r"^[a-z]{2,3}-[A-Z]{2,3}-.+Neural$")
+
+# Voices that the service currently accepts but never answers (found with scripts/lang_test.py).
+KNOWN_BROKEN: set[str] = {
+    "da-DK-ChristelNeural", "el-GR-AthinaNeural", "th-TH-PremwadeeNeural",   # returned no audio in tests (Nov 2026)
+}
+
+
 def _load_voices() -> list[Voice]:
     rows = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+    rows = [r for r in rows if _VALID_VOICE_ID.match(r[0]) and r[0] not in KNOWN_BROKEN]
     voices = [Voice(r[0], r[2], r[3], "male" if r[1] == "M" else "female") for r in rows]
 
     def order(v: Voice):
@@ -126,8 +151,8 @@ def _validate(text: str, voice_id: str, rate: int, pitch: int, max_chars: int) -
     if not isinstance(text, str) or not text.strip():
         raise TTSError("Text is empty.")
     text = text.strip()
-    if len(text) > max_chars:
-        raise TTSError(f"Text is too long ({len(text)} chars; limit {max_chars}).")
+    if max_chars and len(text) > max_chars:
+        raise TTSError(f"Text is too long ({len(text):,} characters; the limit is {max_chars:,}).")
     if voice_id not in _VOICE_BY_ID:
         raise TTSError(f"Unknown voice: {voice_id!r}.")
     if not (RATE_RANGE[0] <= int(rate) <= RATE_RANGE[1]):
@@ -151,21 +176,79 @@ async def _stream_mp3(text: str, voice_id: str, rate: int, pitch: int) -> bytes:
     return buf.getvalue()
 
 
-def synthesize_mp3(text: str, voice_id: str, rate: int = 0, pitch: int = 0, max_chars: int = MAX_TEXT_CHARS) -> bytes:
-    """Synthesize `text` and return MP3 bytes."""
-    text = _validate(text, voice_id, rate, pitch, max_chars)
+NO_AUDIO_HINT = ("No audio was returned. The text probably does not match the voice's language "
+                 "(for example Arabic text with a French voice) - pick a voice for the language of your text.")
+
+
+def split_text(text: str, limit: int = CHUNK_CHARS) -> list[str]:
+    """Split text at sentence ends (then spaces) into pieces of at most `limit` characters."""
+    text = text.strip()
+    if len(text) <= limit:
+        return [text] if text else []
+    sentences = [s for s in re.split(r"(?<=[.!?؟۔।。！？\n])\s*", text) if s.strip()]
+    chunks: list[str] = []
+    cur = ""
+    for sentence in sentences:
+        while len(sentence) > limit:  # one huge "sentence": break it at a space (or hard)
+            cut = sentence.rfind(" ", 0, limit)
+            cut = cut if cut > limit // 2 else limit
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            chunks.append(sentence[:cut].strip())
+            sentence = sentence[cut:].lstrip()
+        if len(cur) + len(sentence) + 1 > limit and cur:
+            chunks.append(cur)
+            cur = sentence
+        else:
+            cur = f"{cur} {sentence}".strip() if cur else sentence
+    if cur:
+        chunks.append(cur)
+    return [c for c in chunks if c.strip()]
+
+
+async def _synth_chunks(chunks: list[str], voice_id: str, rate: int, pitch: int,
+                        progress: Callable[[float], None] | None) -> bytes:
+    out = io.BytesIO()
+    for i, chunk in enumerate(chunks):
+        data = b""
+        for attempt in range(2):  # one retry: the service occasionally drops a connection or answers nothing
+            try:
+                data = await _stream_mp3(chunk, voice_id, rate, pitch)
+            except edge_tts.exceptions.NoAudioReceived:
+                data = b""
+            except Exception:
+                if attempt == 1:
+                    raise
+                await asyncio.sleep(1.0)
+                continue
+            if data:
+                break
+            await asyncio.sleep(0.5)
+        if not data:
+            raise TTSUnavailable(NO_AUDIO_HINT)
+        out.write(data)
+        if progress:
+            progress((i + 1) / len(chunks))
+    return out.getvalue()
+
+
+def synthesize_mp3(text: str, voice_id: str, rate: int = 0, pitch: int = 0, max_chars: int | None = None,
+                   progress: Callable[[float], None] | None = None) -> bytes:
+    """Synthesize `text` of any length (up to the configured limit) and return MP3 bytes."""
+    limit = max_text_chars() if max_chars is None else max_chars
+    text = _validate(text, voice_id, rate, pitch, limit)
     try:
-        data = asyncio.run(_stream_mp3(text, voice_id, rate, pitch))
+        return asyncio.run(_synth_chunks(split_text(text), voice_id, rate, pitch, progress))
+    except TTSUnavailable:
+        raise
     except Exception as exc:  # network/proxy/service errors from edge-tts
         raise TTSUnavailable(f"Speech service unavailable: {exc}") from exc
-    if not data:
-        raise TTSUnavailable("Speech service returned no audio.")
-    return data
 
 
 def preview_mp3(text: str, voice_id: str, rate: int = 0, pitch: int = 0) -> bytes:
     """Like synthesize_mp3 but limited to MAX_PREVIEW_CHARS so previews stay fast."""
-    text = _validate(text, voice_id, rate, pitch, MAX_TEXT_CHARS)
+    text = _validate(text, voice_id, rate, pitch, max_text_chars())
     return synthesize_mp3(text[:MAX_PREVIEW_CHARS], voice_id, rate, pitch)
 
 

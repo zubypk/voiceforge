@@ -3,14 +3,16 @@
 A project is plain JSON:
 
     {
-      "size": "youtube-1080",            # see SIZES
+      "ratio": "16:9",                   # 16:9, 9:16, 1:1, 4:5, 4:3, 21:9   (see RATIOS)
+      "resolution": "1080",              # 480 (draft), 720 HD, 1080 Full HD, 1440 2K, 2160 4K   (see RESOLUTIONS)
       "theme": "academy",                # see THEMES
       "captions": true,
-      "quality": "final",                # "draft" renders at half size, faster
       "voice": {"lang": "ar-SA", "gender": "male", "voice": null, "rate": 0, "pitch": 0},
+      "music": {"asset": "<id>", "volume": 0.15},          # optional background music
       "scenes": [
-        {"layout": "title|bullets|text|quote", "title": "...", "body": "...", "narration": "...",
+        {"layout": "title|bullets|text|quote|media", "title": "...", "body": "...", "narration": "...",
          "background": {"type": "theme|color|image|video", "color": "#112233", "asset": "<id>"},
+         "media": {"asset": "<id>", "position": "auto|left|right|top|bottom", "fit": "contain|cover"},
          "duration": null,               # seconds, or null = follow the narration
          "transition": "fade|none"}
       ]
@@ -41,13 +43,31 @@ import tts_module as tts
 
 # ----------------------------------------------------------------------------- presets
 
-SIZES = {
-    "youtube-1080": {"label": "YouTube · Educational 16:9 (1080p)", "w": 1920, "h": 1080, "ratio": "16:9"},
-    "youtube-720": {"label": "YouTube · 16:9 (720p, small file)", "w": 1280, "h": 720, "ratio": "16:9"},
-    "shorts": {"label": "Shorts · TikTok · Reels 9:16", "w": 1080, "h": 1920, "ratio": "9:16"},
-    "square": {"label": "Instagram · Facebook feed 1:1", "w": 1080, "h": 1080, "ratio": "1:1"},
-    "portrait": {"label": "Instagram portrait 4:5", "w": 1080, "h": 1350, "ratio": "4:5"},
-    "classroom": {"label": "Classroom · Presentation 4:3", "w": 1440, "h": 1080, "ratio": "4:3"},
+RATIOS = {
+    "16:9": {"label": "YouTube · Educational · Widescreen (16:9)", "w": 16, "h": 9},
+    "9:16": {"label": "Shorts · TikTok · Reels · Stories (9:16)", "w": 9, "h": 16},
+    "1:1": {"label": "Instagram · Facebook square (1:1)", "w": 1, "h": 1},
+    "4:5": {"label": "Instagram portrait (4:5)", "w": 4, "h": 5},
+    "4:3": {"label": "Classroom · Presentation (4:3)", "w": 4, "h": 3},
+    "21:9": {"label": "Cinema ultrawide (21:9)", "w": 21, "h": 9},
+}
+
+# key = length of the short side in pixels (how YouTube names it: 1080p = 1920x1080 or 1080x1920)
+RESOLUTIONS = {
+    "480": {"label": "SD 480p (draft, fastest)", "short": 480},
+    "720": {"label": "HD 720p", "short": 720},
+    "1080": {"label": "Full HD 1080p", "short": 1080},
+    "1440": {"label": "2K QHD 1440p", "short": 1440},
+    "2160": {"label": "4K UHD 2160p", "short": 2160},
+}
+
+# Longest video allowed per resolution (seconds): big frames render much more slowly.
+MAX_SECONDS = {"480": 1800.0, "720": 1800.0, "1080": 1800.0, "1440": 900.0, "2160": 600.0}
+
+# Projects saved by the first version used these ids.
+LEGACY_SIZES = {
+    "youtube-1080": ("16:9", "1080"), "youtube-720": ("16:9", "720"), "shorts": ("9:16", "1080"),
+    "square": ("1:1", "1080"), "portrait": ("4:5", "1080"), "classroom": ("4:3", "1080"),
 }
 
 THEMES = {
@@ -58,24 +78,44 @@ THEMES = {
     "midnight": {"label": "Midnight", "bg": ("#0b1020", "#1b2440"), "text": "#e8ecff", "accent": "#38bdf8", "muted": "#9aa6cf"},
 }
 
-LAYOUTS = ("title", "bullets", "text", "quote")
+LAYOUTS = ("title", "bullets", "text", "quote", "media")
+MEDIA_POSITIONS = ("auto", "left", "right", "top", "bottom")
+MEDIA_FITS = ("contain", "cover")
 TRANSITIONS = ("fade", "none")
 FPS = 30
 
-LIMITS = {
-    "max_scenes": 40,
-    "max_title": 200,
-    "max_body": 1500,
-    "max_narration": 3000,          # per scene
-    "max_total_narration": 20000,
-    "min_scene_seconds": 2.0,
-    "max_scene_seconds": 180.0,
-    "default_silent_seconds": 5.0,
-    "end_pad_seconds": 0.5,
-    "max_total_seconds": 900.0,     # 15 minutes
-    "max_image_bytes": 15 * 1024 * 1024,
-    "max_video_bytes": 150 * 1024 * 1024,
-}
+
+def _limits() -> dict:
+    total = tts.max_text_chars() or 1_000_000
+    return {
+        "max_scenes": 60,
+        "max_title": 200,
+        "max_body": 1500,
+        "max_narration": 20_000,           # per scene
+        "max_total_narration": total,
+        "min_scene_seconds": 2.0,
+        "max_scene_seconds": 600.0,
+        "default_silent_seconds": 5.0,
+        "end_pad_seconds": 0.5,
+        "max_seconds": MAX_SECONDS,
+        "max_image_bytes": 25 * 1024 * 1024,
+        "max_video_bytes": 300 * 1024 * 1024,
+        "max_audio_bytes": 60 * 1024 * 1024,
+        "owner_quota_bytes": 800 * 1024 * 1024,
+    }
+
+
+LIMITS = _limits()
+
+
+def dimensions(ratio: str, resolution: str) -> tuple[int, int]:
+    """Pixel size for an aspect ratio and a resolution key (short side), both even numbers."""
+    r, short = RATIOS[ratio], RESOLUTIONS[resolution]["short"]
+    if r["w"] >= r["h"]:
+        h, w = short, short * r["w"] / r["h"]
+    else:
+        w, h = short, short * r["h"] / r["w"]
+    return round(w / 2) * 2, round(h / 2) * 2
 
 
 class VideoError(ValueError):
@@ -153,6 +193,20 @@ _FONT_FILES = {
     "bn": ["NotoSansBengali-{W}.ttf"],
     "th": ["NotoSansThai-{W}.ttf"],
     "ta": ["NotoSansTamil-{W}.ttf"],
+    "gu": ["NotoSansGujarati-{W}.ttf"],
+    "te": ["NotoSansTelugu-{W}.ttf"],
+    "kn": ["NotoSansKannada-{W}.ttf"],
+    "ml": ["NotoSansMalayalam-{W}.ttf"],
+    "si": ["NotoSansSinhala-{W}.ttf"],
+    "km": ["NotoSansKhmer-{W}.ttf"],
+    "lo": ["NotoSansLao-{W}.ttf"],
+    "my": ["NotoSansMyanmar-{W}.ttf"],
+    "ka": ["NotoSansGeorgian-{W}.ttf"],
+    "am": ["NotoSansEthiopic-{W}.ttf"],
+    "pa": ["NotoSansGurmukhi-{W}.ttf"],
+    "zh": ["NotoSansCJKsc-{W}.otf"],     # one CJK font covers Chinese, Japanese and Korean
+    "ja": ["NotoSansCJKsc-{W}.otf"],
+    "ko": ["NotoSansCJKsc-{W}.otf"],
     "": ["NotoSans-{W}.ttf"],
 }
 
@@ -354,8 +408,70 @@ def _bullets(body: str) -> list[str]:
     return out
 
 
-def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: str | None, scrim: bool) -> Image.Image:
-    """Transparent RGBA layer: optional scrim + slide text + optional caption pill."""
+def regions(project: dict, scene: dict, size: tuple[int, int]) -> dict:
+    """Where text and media go on a slide. Rects are (x0, y0, x1, y1) in pixels."""
+    w, h = size
+    mx, my = w * 0.08, h * 0.08
+    bottom = h * (0.76 if (project["captions"] and scene["narration"]) else 0.92)
+    area = (mx, my, w - mx, bottom)
+    media = scene.get("media") or {}
+    layout = scene["layout"]
+    if not media.get("asset") or layout in ("title", "quote"):
+        return {"text": area, "media": None}
+    cw, ch = area[2] - area[0], area[3] - area[1]
+    gap = w * 0.04
+    if layout == "media":
+        title_h = h * 0.17 if scene["title"] else 0.0
+        cap_h = h * 0.13 if scene["body"] else 0.0
+        return {"text": area, "media": (mx, my + title_h, area[2], bottom - cap_h), "title_h": title_h, "cap_h": cap_h}
+    pos = media.get("position", "auto")
+    landscape = w >= h * 1.3
+    if pos == "auto":
+        pos = (("left" if is_rtl(scene["title"] or scene["body"]) else "right") if landscape else "top")
+    if pos in ("left", "right"):
+        text_w = cw * 0.55
+        media_w = cw - text_w - gap
+        if pos == "right":
+            return {"text": (area[0], area[1], area[0] + text_w, area[3]), "media": (area[2] - media_w, area[1], area[2], area[3])}
+        return {"text": (area[2] - text_w, area[1], area[2], area[3]), "media": (area[0], area[1], area[0] + media_w, area[3])}
+    media_h = ch * 0.42
+    if pos == "top":
+        return {"text": (area[0], area[1] + media_h + gap * 0.6, area[2], area[3]), "media": (area[0], area[1], area[2], area[1] + media_h)}
+    return {"text": (area[0], area[1], area[2], area[3] - media_h - gap * 0.6), "media": (area[0], area[3] - media_h, area[2], area[3])}
+
+
+def int_rect(rect: tuple) -> tuple[int, int, int, int]:
+    """(x, y, w, h) with even values, as ffmpeg likes them."""
+    x0, y0, x1, y1 = rect
+    x, y = int(x0) // 2 * 2, int(y0) // 2 * 2
+    return x, y, max(2, (int(x1) - x) // 2 * 2), max(2, (int(y1) - y) // 2 * 2)
+
+
+def paste_media(layer: Image.Image, rect: tuple, img: Image.Image, fit: str, theme: dict, unit: int) -> None:
+    from PIL import ImageFilter
+
+    x, y, rw, rh = int_rect(rect)
+    img = img.convert("RGB")
+    if fit == "cover":
+        fitted, px, py = cover(img, (rw, rh)), x, y
+    else:
+        k = min(rw / img.width, rh / img.height)
+        fw, fh = max(2, round(img.width * k)), max(2, round(img.height * k))
+        fitted, px, py = img.resize((fw, fh), Image.LANCZOS), x + (rw - fw) // 2, y + (rh - fh) // 2
+    radius = max(6, round(unit * 0.016))
+    mask = Image.new("L", fitted.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, fitted.width - 1, fitted.height - 1), radius, fill=255)
+    shadow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle((px + 4, py + 8, px + fitted.width + 4, py + fitted.height + 8), radius, fill=(0, 0, 0, 95))
+    layer.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(max(2, unit * 0.008))))
+    layer.paste(fitted, (px, py), mask)
+    ImageDraw.Draw(layer).rounded_rectangle((px, py, px + fitted.width - 1, py + fitted.height - 1), radius,
+                                            outline=(*hex_rgb(theme["accent"]), 255), width=max(2, round(unit * 0.004)))
+
+
+def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: str | None, scrim: bool,
+                   media_img: Image.Image | None = None) -> Image.Image:
+    """Transparent RGBA layer: optional scrim + slide text + media picture + optional caption pill."""
     w, h = size
     unit = min(w, h)
     bg = scene["background"]["type"]
@@ -368,14 +484,20 @@ def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: s
         d.ellipse((w * 0.62, -h * 0.35, w * 1.25, h * 0.55), fill=(*hex_rgb(theme["accent"]), 22))
         d.ellipse((-w * 0.2, h * 0.65, w * 0.3, h * 1.3), fill=(*hex_rgb(theme["text"]), 14))
 
+    reg = regions(project, scene, size)
+    rect = reg["text"]
     mx, my = w * 0.08, h * 0.08
-    bottom = h * (0.76 if project["captions"] and caption is not None else 0.92)
-    rect = (mx, my, w - mx, bottom)
     title, body, layout = scene["title"], scene["body"], scene["layout"]
     rtl_title = is_rtl(title or body)
-    start_align = "start"
 
-    if layout == "title":
+    if layout == "media":
+        if title:
+            _fit_and_draw(d, [Block(title, 0.082, True, "text", align="center", gap=0.3)],
+                          (mx, my, w - mx, my + reg.get("title_h", h * 0.17)), theme, unit, "center")
+        if body and reg.get("cap_h"):
+            _fit_and_draw(d, [Block(body.replace("\n", " "), 0.05, False, "muted", align="center")],
+                          (mx, rect[3] - reg["cap_h"], w - mx, rect[3]), theme, unit, "center")
+    elif layout == "title":
         blocks = []
         if title:
             blocks.append(Block(title, 0.105, True, "text", align="center", gap=0.45))
@@ -392,7 +514,7 @@ def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: s
     else:
         blocks = []
         if title:
-            blocks.append(Block(title, 0.082, True, "text", align=start_align, gap=0.5, rule=True))
+            blocks.append(Block(title, 0.082, True, "text", align="start", gap=0.5, rule=True))
         if layout == "bullets":
             for item in _bullets(body):
                 blocks.append(Block(item, 0.062, False, "text", bullet=True, gap=0.6))
@@ -400,6 +522,8 @@ def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: s
             blocks.append(Block(body, 0.058, False, "text", gap=0.3))
         _fit_and_draw(d, blocks, rect, theme, unit, "top")
 
+    if reg["media"] and media_img is not None:
+        paste_media(layer, reg["media"], media_img, (scene.get("media") or {}).get("fit", "contain"), theme, unit)
     if project["captions"] and caption:
         _draw_caption(d, caption, size, unit)
     return layer
@@ -449,6 +573,22 @@ def base_frame(project: dict, scene: dict, size: tuple[int, int], assets: "Asset
     return gradient(size, *theme["bg"])
 
 
+def first_frame(video_path: Path, out_png: Path) -> Path | None:
+    _run([ffmpeg_bin(), "-y", "-ss", "0.4", "-i", str(video_path), "-frames:v", "1", str(out_png)], 60)
+    if not out_png.exists():  # clips shorter than 0.4 s
+        _run([ffmpeg_bin(), "-y", "-i", str(video_path), "-frames:v", "1", str(out_png)], 60)
+    return out_png if out_png.exists() else None
+
+
+def scene_media(scene: dict, assets: "AssetStore | None") -> tuple[str, Path] | None:
+    m = scene.get("media") or {}
+    if not m.get("asset") or scene["layout"] in ("title", "quote") or assets is None:
+        return None
+    p = assets.path(m["asset"])
+    kind = assets.kind(m["asset"])
+    return (kind, p) if p and kind in ("image", "video") else None
+
+
 # ----------------------------------------------------------------------------- captions
 
 def split_captions(text: str, max_chars: int = 84) -> list[str]:
@@ -470,8 +610,7 @@ def split_captions(text: str, max_chars: int = 84) -> list[str]:
                 cur = f"{cur} {word}".strip()
         if cur:
             chunks.append(cur)
-    # merge tiny tails into the previous chunk
-    merged: list[str] = []
+    merged: list[str] = []  # merge tiny tails into the previous chunk
     for c in chunks:
         if merged and len(c) < 12 and len(merged[-1]) + len(c) + 1 <= max_chars:
             merged[-1] += " " + c
@@ -499,62 +638,131 @@ def srt_time(t: float) -> str:
 # ----------------------------------------------------------------------------- assets
 
 class AssetStore:
+    """One user's uploads: <root>/<id>.<ext> plus <id>.json (name, kind, size) and cached thumbnails."""
+
     IMAGE_EXT = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp"}
     VIDEO_EXT = {".mp4": "mp4", ".mov": "mov", ".webm": "webm", ".m4v": "mp4"}
+    AUDIO_EXT = {".mp3": "mp3", ".wav": "wav", ".m4a": "m4a", ".aac": "aac", ".ogg": "ogg", ".flac": "flac"}
 
     def __init__(self, root: Path):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _ok_id(asset_id) -> bool:
+        return bool(re.fullmatch(r"[0-9a-f]{32}", str(asset_id or "")))
+
     def path(self, asset_id: str) -> Path | None:
-        if not re.fullmatch(r"[0-9a-f]{32}", str(asset_id or "")):
+        if not self._ok_id(asset_id):
             return None
         for p in self.root.glob(f"{asset_id}.*"):
-            return p
+            if p.suffix != ".json" and not p.name.endswith(".thumb.jpg"):
+                return p
         return None
 
-    def kind(self, asset_id: str) -> str | None:
+    def meta(self, asset_id: str) -> dict | None:
         p = self.path(asset_id)
         if not p:
             return None
-        return "video" if p.suffix.lower().lstrip(".") in ("mp4", "mov", "webm") else "image"
+        try:
+            return json.loads((self.root / f"{asset_id}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            ext = p.suffix.lower().lstrip(".")
+            kind = "video" if ext in ("mp4", "mov", "webm") else "audio" if ext in ("mp3", "wav", "m4a", "aac", "ogg", "flac") else "image"
+            return {"id": asset_id, "kind": kind, "name": p.name, "bytes": p.stat().st_size, "created": p.stat().st_mtime}
+
+    def kind(self, asset_id: str) -> str | None:
+        m = self.meta(asset_id)
+        return m["kind"] if m else None
+
+    def total_bytes(self) -> int:
+        return sum(p.stat().st_size for p in self.root.iterdir() if p.is_file())
+
+    def list(self) -> list[dict]:
+        out = []
+        for p in self.root.glob("*.json"):
+            m = self.meta(p.stem)
+            if m:
+                out.append(m)
+        return sorted(out, key=lambda m: m.get("created", 0), reverse=True)
+
+    def delete(self, asset_id: str) -> bool:
+        p = self.path(asset_id)
+        if not p:
+            return False
+        for f in self.root.glob(f"{asset_id}*"):
+            f.unlink(missing_ok=True)
+        return True
 
     def save(self, data: bytes, filename: str) -> dict:
-        ext = Path(filename or "").suffix.lower()
+        import io
+
+        name = re.sub(r"[^\w.\- ]+", "_", Path(filename or "upload").name)[:80] or "upload"
+        ext = Path(name).suffix.lower()
+        if self.total_bytes() + len(data) > LIMITS["owner_quota_bytes"]:
+            raise VideoError("Your storage is full. Delete some uploads first.")
         asset_id = uuid.uuid4().hex
-        if ext in self.VIDEO_EXT:
-            if len(data) > LIMITS["max_video_bytes"]:
-                raise VideoError("Video is too large (limit 150 MB).")
-            dest = self.root / f"{asset_id}.{self.VIDEO_EXT[ext]}"
+        if ext in self.VIDEO_EXT or ext in self.AUDIO_EXT:
+            is_video = ext in self.VIDEO_EXT
+            if len(data) > (LIMITS["max_video_bytes"] if is_video else LIMITS["max_audio_bytes"]):
+                raise VideoError("Video is too large." if is_video else "Audio file is too large.")
+            dest = self.root / f"{asset_id}.{(self.VIDEO_EXT if is_video else self.AUDIO_EXT)[ext]}"
             dest.write_bytes(data)
-            try:
-                if probe_duration(dest) <= 0:
-                    raise VideoError("Empty video.")
-            except VideoError:
+            proc = _run([ffmpeg_bin(), "-hide_banner", "-i", str(dest)], 60)
+            has = ("Video:" if is_video else "Audio:") in proc.stderr
+            if not has or not re.search(r"Duration:\s*\d", proc.stderr):
                 dest.unlink(missing_ok=True)
-                raise VideoError("That file is not a readable video.")
-            return {"id": asset_id, "kind": "video"}
-        if len(data) > LIMITS["max_image_bytes"]:
-            raise VideoError("Image is too large (limit 15 MB).")
-        try:
-            import io
-
-            with Image.open(io.BytesIO(data)) as im:
-                fmt = im.format
-                im.verify()
-        except Exception:
-            raise VideoError("Unsupported file. Use PNG, JPG, WEBP images or MP4/MOV/WEBM video.")
-        if fmt not in self.IMAGE_EXT:
-            raise VideoError("Unsupported image format. Use PNG, JPG or WEBP.")
-        (self.root / f"{asset_id}.{self.IMAGE_EXT[fmt]}").write_bytes(data)
-        return {"id": asset_id, "kind": "image"}
-
-    def cleanup(self, max_age_seconds: int) -> None:
-        cutoff = time.time() - max_age_seconds
-        for p in self.root.iterdir():
+                raise VideoError("That file is not a readable video." if is_video else "That file is not readable audio.")
+            kind = "video" if is_video else "audio"
+        else:
+            if len(data) > LIMITS["max_image_bytes"]:
+                raise VideoError("Image is too large (limit 25 MB).")
             try:
-                if p.stat().st_mtime < cutoff:
-                    p.unlink()
+                with Image.open(io.BytesIO(data)) as im:
+                    fmt = im.format
+                    im.verify()
+            except Exception:
+                raise VideoError("Unsupported file. Use PNG/JPG/WEBP images, MP4/MOV/WEBM video or MP3/WAV/M4A audio.")
+            if fmt not in self.IMAGE_EXT:
+                raise VideoError("Unsupported image format. Use PNG, JPG or WEBP.")
+            (self.root / f"{asset_id}.{self.IMAGE_EXT[fmt]}").write_bytes(data)
+            kind = "image"
+        meta = {"id": asset_id, "kind": kind, "name": name, "bytes": len(data), "created": time.time()}
+        (self.root / f"{asset_id}.json").write_text(json.dumps(meta), encoding="utf-8")
+        return meta
+
+    def thumb(self, asset_id: str) -> Path | None:
+        p = self.path(asset_id)
+        if not p:
+            return None
+        out = self.root / f"{asset_id}.thumb.jpg"
+        if out.exists():
+            return out
+        kind = self.kind(asset_id)
+        try:
+            if kind == "image":
+                with Image.open(p) as im:
+                    im = im.convert("RGB")
+                    im.thumbnail((360, 360))
+                    im.save(out, "JPEG", quality=82)
+            elif kind == "video":
+                still = self.root / f"{asset_id}.still.png"
+                if first_frame(p, still):
+                    with Image.open(still) as im:
+                        im = im.convert("RGB")
+                        im.thumbnail((360, 360))
+                        im.save(out, "JPEG", quality=82)
+                    still.unlink(missing_ok=True)
+        except Exception:
+            return None
+        return out if out.exists() else None
+
+    def cleanup(self, max_age_seconds: float, keep: set[str]) -> None:
+        cutoff = time.time() - max_age_seconds
+        for p in self.root.glob("*.json"):
+            try:
+                if p.stem not in keep and p.stat().st_mtime < cutoff:
+                    self.delete(p.stem)
             except OSError:
                 pass
 
@@ -565,20 +773,28 @@ def _text(v, limit: int, name: str) -> str:
     v = "" if v is None else str(v)
     v = v.replace("\x00", "").strip()
     if len(v) > limit:
-        raise VideoError(f"{name} is too long (limit {limit} characters).")
+        raise VideoError(f"{name} is too long (limit {limit:,} characters).")
     return v
 
 
 def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: bool = False) -> dict:
     if not isinstance(raw, dict):
         raise VideoError("Invalid project.")
-    size = raw.get("size", "youtube-1080")
+    L = LIMITS
+    ratio, resolution = raw.get("ratio"), raw.get("resolution")
+    if raw.get("size") in LEGACY_SIZES and not ratio:           # projects from the first version
+        ratio, resolution = LEGACY_SIZES[raw["size"]]
+        if raw.get("quality") == "draft":
+            resolution = "480"
+    ratio, resolution = ratio or "16:9", str(resolution or "1080")
+    if ratio not in RATIOS:
+        raise VideoError(f"Unknown aspect ratio: {ratio!r}.")
+    if resolution not in RESOLUTIONS:
+        raise VideoError(f"Unknown resolution: {resolution!r}.")
     theme = raw.get("theme", "academy")
-    if size not in SIZES:
-        raise VideoError(f"Unknown size preset: {size!r}.")
     if theme not in THEMES:
         raise VideoError(f"Unknown theme: {theme!r}.")
-    quality = "draft" if raw.get("quality") == "draft" else "final"
+
     voice = raw.get("voice") or {}
     voice_id = voice.get("voice") or None
     try:
@@ -595,11 +811,22 @@ def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: b
     if not (tts.RATE_RANGE[0] <= rate <= tts.RATE_RANGE[1]) or not (tts.PITCH_RANGE[0] <= pitch <= tts.PITCH_RANGE[1]):
         raise VideoError("Voice speed or pitch is out of range.")
 
+    music = None
+    m_in = raw.get("music") or {}
+    if m_in.get("asset"):
+        if assets is None or assets.kind(m_in["asset"]) != "audio":
+            raise VideoError("The background music file was not found. Upload it again.")
+        try:
+            vol = float(m_in.get("volume", 0.15))
+        except (TypeError, ValueError):
+            vol = 0.15
+        music = {"asset": m_in["asset"], "volume": min(1.0, max(0.0, vol))}
+
     scenes_in = raw.get("scenes")
     if not isinstance(scenes_in, list) or not scenes_in:
         raise VideoError("Add at least one scene.")
-    if len(scenes_in) > LIMITS["max_scenes"]:
-        raise VideoError(f"Too many scenes (limit {LIMITS['max_scenes']}).")
+    if len(scenes_in) > L["max_scenes"]:
+        raise VideoError(f"Too many scenes (limit {L['max_scenes']}).")
 
     scenes, total_narr = [], 0
     for i, s in enumerate(scenes_in, 1):
@@ -619,6 +846,15 @@ def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: b
         if bg_type in ("image", "video"):
             if assets is None or assets.kind(bg["asset"]) != bg_type:
                 raise VideoError(f"Scene {i}: the {bg_type} background was not found. Upload it again.")
+        med_in = s.get("media") or {}
+        media = None
+        if med_in.get("asset"):
+            if assets is None or assets.kind(med_in["asset"]) not in ("image", "video"):
+                raise VideoError(f"Scene {i}: the picture/video was not found. Upload it again.")
+            pos = med_in.get("position", "auto")
+            fit = med_in.get("fit", "contain")
+            media = {"asset": med_in["asset"], "position": pos if pos in MEDIA_POSITIONS else "auto",
+                     "fit": fit if fit in MEDIA_FITS else "contain"}
         dur = s.get("duration")
         if dur in (None, "", 0):
             dur = None
@@ -627,32 +863,24 @@ def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: b
                 dur = float(dur)
             except (TypeError, ValueError):
                 raise VideoError(f"Scene {i}: duration must be a number of seconds.")
-            if not (LIMITS["min_scene_seconds"] <= dur <= LIMITS["max_scene_seconds"]):
-                raise VideoError(f"Scene {i}: duration must be between {LIMITS['min_scene_seconds']:g} and {LIMITS['max_scene_seconds']:g} seconds.")
-        narration = _text(s.get("narration"), LIMITS["max_narration"], f"Scene {i} narration")
+            if not (L["min_scene_seconds"] <= dur <= L["max_scene_seconds"]):
+                raise VideoError(f"Scene {i}: duration must be between {L['min_scene_seconds']:g} and {L['max_scene_seconds']:g} seconds.")
+        narration = _text(s.get("narration"), L["max_narration"], f"Scene {i} narration")
         total_narr += len(narration)
-        scene = {
-            "layout": layout,
-            "title": _text(s.get("title"), LIMITS["max_title"], f"Scene {i} title"),
-            "body": _text(s.get("body"), LIMITS["max_body"], f"Scene {i} text"),
-            "narration": narration,
-            "background": bg,
-            "duration": dur,
-            "transition": transition,
-        }
-        if not allow_empty and not (scene["title"] or scene["body"] or narration):
+        scene = {"layout": layout, "title": _text(s.get("title"), L["max_title"], f"Scene {i} title"),
+                 "body": _text(s.get("body"), L["max_body"], f"Scene {i} text"), "narration": narration,
+                 "background": bg, "media": media, "duration": dur, "transition": transition}
+        if not allow_empty and not (scene["title"] or scene["body"] or narration or media):
             raise VideoError(f"Scene {i} is empty.")
         scenes.append(scene)
-    if total_narr > LIMITS["max_total_narration"]:
-        raise VideoError(f"Narration is too long overall (limit {LIMITS['max_total_narration']} characters).")
-    return {"size": size, "theme": theme, "captions": bool(raw.get("captions", True)), "quality": quality,
-            "voice": {"voice": voice_id, "rate": rate, "pitch": pitch}, "scenes": scenes}
+    if total_narr > L["max_total_narration"]:
+        raise VideoError(f"Narration is too long overall (limit {L['max_total_narration']:,} characters).")
+    return {"ratio": ratio, "resolution": resolution, "theme": theme, "captions": bool(raw.get("captions", True)),
+            "voice": {"voice": voice_id, "rate": rate, "pitch": pitch}, "music": music, "scenes": scenes}
 
 
 def canvas_size(project: dict) -> tuple[int, int]:
-    p = SIZES[project["size"]]
-    f = 0.5 if project["quality"] == "draft" else 1.0
-    return (round(p["w"] * f / 2) * 2, round(p["h"] * f / 2) * 2)
+    return dimensions(project["ratio"], project["resolution"])
 
 
 # ----------------------------------------------------------------------------- preview
@@ -661,34 +889,48 @@ def render_preview_png(project: dict, index: int, assets: AssetStore | None, max
     import io
 
     scene = project["scenes"][index]
-    full_w, full_h = canvas_size({**project, "quality": "final"})
+    full_w, full_h = dimensions(project["ratio"], "1080")  # preview is drawn as the 1080p layout, scaled down
     f = min(1.0, max_width / full_w)
     size = (round(full_w * f / 2) * 2, round(full_h * f / 2) * 2)
-    still = None
-    tmpdir = None
-    if scene["background"]["type"] == "video" and assets:
-        vp = assets.path(scene["background"]["asset"])
-        if vp:
-            tmpdir = Path(tempfile.mkdtemp(prefix="vf-prev-"))
-            still = tmpdir / "still.png"
-            _run([ffmpeg_bin(), "-y", "-ss", "0.5", "-i", str(vp), "-frames:v", "1", str(still)], 60)
+    tmpdir = Path(tempfile.mkdtemp(prefix="vf-prev-"))
     try:
-        frame = base_frame(project, scene, size, assets, still).convert("RGBA")
+        bg_still = media_img = None
+        if scene["background"]["type"] == "video" and assets:
+            vp = assets.path(scene["background"]["asset"])
+            bg_still = first_frame(vp, tmpdir / "bg.png") if vp else None
+        sm = scene_media(scene, assets)
+        if sm:
+            kind, path = sm
+            if kind == "video":
+                path = first_frame(path, tmpdir / "media.png")
+            if path:
+                with Image.open(path) as im:
+                    media_img = im.convert("RGB")
+        frame = base_frame(project, scene, size, assets, bg_still).convert("RGBA")
         cap = None
         if project["captions"] and scene["narration"]:
             cap = (split_captions(scene["narration"]) or [""])[0]
-        frame.alpha_composite(render_overlay(project, scene, size, cap, scrim=scene["background"]["type"] in ("image", "video")))
+        frame.alpha_composite(render_overlay(project, scene, size, cap, scene["background"]["type"] in ("image", "video"), media_img))
         buf = io.BytesIO()
         frame.convert("RGB").save(buf, "PNG")
         return buf.getvalue()
     finally:
-        if tmpdir:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 # ----------------------------------------------------------------------------- render
 
 ProgressFn = Callable[[float, str], None]
+
+
+def _video_overlay_filter(rect: tuple, fit: str, in_label: str, base_label: str, out_label: str, src_idx: int) -> str:
+    x, y, rw, rh = int_rect(rect)
+    if fit == "cover":
+        scale = f"scale={rw}:{rh}:force_original_aspect_ratio=increase,crop={rw}:{rh}"
+    else:
+        scale = f"scale={rw}:{rh}:force_original_aspect_ratio=decrease"
+    return (f"[{src_idx}:v]fps={FPS},{scale},setsar=1[mv{src_idx}];"
+            f"[{base_label}][mv{src_idx}]overlay=x={x}+({rw}-overlay_w)/2:y={y}+({rh}-overlay_h)/2[{out_label}]")
 
 
 def render_project(project: dict, out_path: Path, assets: AssetStore | None, progress: ProgressFn | None = None,
@@ -699,19 +941,22 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
     out_path = Path(out_path)
     size = canvas_size(project)
     w, h = size
-    draft = project["quality"] == "draft"
+    resolution = project["resolution"]
+    heavy = RESOLUTIONS[resolution]["short"] >= 1440
+    draft = resolution == "480"
     voice = project["voice"]
     work = Path(tempfile.mkdtemp(prefix="vf-render-", dir=out_path.parent))
     ff = ffmpeg_bin()
     scene_files: list[Path] = []
-    srt_lines: list[str] = []
+    srt_lines: list = []
     t_offset = 0.0
     n = len(project["scenes"])
     portrait = h > w * 1.2
+    max_total = MAX_SECONDS[resolution]
 
     try:
         for i, scene in enumerate(project["scenes"]):
-            progress(i / n * 0.92, f"scene {i + 1}/{n}")
+            progress(i / n * 0.9, f"scene {i + 1}/{n}")
             sdir = work / f"s{i}"
             sdir.mkdir()
             narration = scene["narration"]
@@ -728,12 +973,14 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
             else:
                 dur = LIMITS["default_silent_seconds"]
             dur = round(dur, 2)
+            if t_offset + dur > max_total:
+                raise VideoError(f"The video is longer than {max_total / 60:g} minutes, the limit for "
+                                 f"{RESOLUTIONS[resolution]['label']}. Choose a lower resolution or split it into parts.")
 
             chunks = split_captions(narration, 60 if portrait else 84) if (project["captions"] and narration) else []
             segs = caption_timing(chunks, dur - LIMITS["end_pad_seconds"] if audio and not scene["duration"] else dur) if chunks else []
-            # stretch last caption to the end of the scene
             if segs:
-                segs[-1] = (segs[-1][0], dur)
+                segs[-1] = (segs[-1][0], dur)  # last caption stays until the scene ends
             for (a, b), text in zip(segs, chunks):
                 srt_lines.append((t_offset + a, t_offset + b, text))
 
@@ -742,14 +989,29 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
             vf_fade = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0.0, dur - 0.3):.2f}:d=0.3" if fade else ""
             af_fade = f",afade=t=in:st=0:d=0.15,afade=t=out:st={max(0.0, dur - 0.25):.2f}:d=0.25" if fade else ""
             out_scene = sdir / "scene.mp4"
-            x264 = ["-c:v", "libx264", "-preset", "ultrafast" if draft else "veryfast", "-crf", "30" if draft else "22",
-                    "-pix_fmt", "yuv420p", "-threads", "2", "-r", str(FPS)]
+            x264 = ["-c:v", "libx264", "-preset", "ultrafast" if draft else "veryfast",
+                    "-crf", "30" if draft else ("20" if heavy else "22"), "-pix_fmt", "yuv420p",
+                    "-threads", "3" if heavy else "2", "-r", str(FPS)]
             aud_in = ["-i", str(audio)] if audio else ["-f", "lavfi", "-t", f"{dur}", "-i", "anullsrc=r=44100:cl=stereo"]
             aud_out = ["-af", f"aresample=44100,apad=whole_dur={dur}{af_fade}", "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "44100"]
 
             timeline = segs if segs else [(0.0, dur)]
             captions_for = chunks if chunks else [None]
 
+            # media (picture drawn into the slide, video overlaid by ffmpeg)
+            media_video = media_img = None
+            sm = scene_media(scene, assets)
+            if sm:
+                kind, path = sm
+                if kind == "video":
+                    media_video = path
+                else:
+                    with Image.open(path) as im:
+                        media_img = im.convert("RGB")
+            reg = regions(project, scene, size)
+
+            cmd = [ff, "-y"]
+            filt = ""
             if bg_type == "video":
                 vp = assets.path(scene["background"]["asset"])
                 if not vp:
@@ -757,68 +1019,99 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
                 overlays = []
                 for k, cap in enumerate(captions_for):
                     p = sdir / f"ov{k}.png"
-                    render_overlay(project, scene, size, cap, scrim=True).save(p)
+                    render_overlay(project, scene, size, cap, True, media_img).save(p)
                     overlays.append(p)
-                cmd = [ff, "-y", "-stream_loop", "-1", "-i", str(vp)] + aud_in
+                cmd += ["-stream_loop", "-1", "-i", str(vp)] + aud_in
                 for p in overlays:
                     cmd += ["-i", str(p)]
-                chain = f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={FPS},setsar=1[b0]"
+                filt = f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={FPS},setsar=1[b0]"
                 for k, (a, b) in enumerate(timeline):
-                    chain += f";[b{k}][{k + 2}:v]overlay=enable='between(t,{a:.3f},{b + 0.01:.3f})'[b{k + 1}]"
-                chain += f";[b{len(timeline)}]format=yuv420p{vf_fade}[v]"
-                cmd += ["-filter_complex", chain, "-map", "[v]", "-map", "1:a"] + x264 + aud_out + ["-t", f"{dur}", str(out_scene)]
+                    filt += f";[b{k}][{k + 2}:v]overlay=enable='between(t,{a:.3f},{b + 0.01:.3f})'[b{k + 1}]"
+                cur = f"b{len(timeline)}"
+                next_idx = 2 + len(overlays)
             else:
                 lst = sdir / "frames.txt"
-                lines = []
-                last = None
+                lines, last = [], None
                 base = base_frame(project, scene, size, assets).convert("RGBA")
                 for k, ((a, b), cap) in enumerate(zip(timeline, captions_for)):
                     frame = base.copy()
-                    frame.alpha_composite(render_overlay(project, scene, size, cap, scrim=bg_type == "image"))
+                    frame.alpha_composite(render_overlay(project, scene, size, cap, bg_type == "image", media_img))
                     p = sdir / f"f{k}.png"
                     frame.convert("RGB").save(p)
                     lines.append(f"file '{p.as_posix()}'\nduration {b - a:.3f}")
                     last = p
                 lines.append(f"file '{last.as_posix()}'")
                 lst.write_text("\n".join(lines), encoding="utf-8")
-                cmd = [ff, "-y", "-f", "concat", "-safe", "0", "-i", str(lst)] + aud_in
-                cmd += ["-vf", f"fps={FPS},format=yuv420p{vf_fade}", "-map", "0:v", "-map", "1:a"] + x264 + aud_out + ["-t", f"{dur}", str(out_scene)]
-            _must(cmd, f"Rendering scene {i + 1}")
+                cmd += ["-f", "concat", "-safe", "0", "-i", str(lst)] + aud_in
+                filt = f"[0:v]fps={FPS},setsar=1[b0]"
+                cur, next_idx = "b0", 2
+
+            if media_video is not None and reg["media"]:
+                cmd += ["-stream_loop", "-1", "-i", str(media_video)]
+                filt += ";" + _video_overlay_filter(reg["media"], (scene.get("media") or {}).get("fit", "contain"),
+                                                     "", cur, "bm", next_idx)
+                cur = "bm"
+            filt += f";[{cur}]format=yuv420p{vf_fade}[v]"
+            cmd += ["-filter_complex", filt, "-map", "[v]", "-map", "1:a"] + x264 + aud_out + ["-t", f"{dur}", str(out_scene)]
+            _must(cmd, f"Rendering scene {i + 1}", timeout=3600 if heavy else 1800)
             scene_files.append(out_scene)
             t_offset += dur
             if audio:
                 audio.unlink(missing_ok=True)
+            for p in sdir.glob("*.png"):
+                p.unlink(missing_ok=True)  # free disk early (4K frames are large)
 
-        progress(0.94, "joining scenes")
+        progress(0.93, "joining scenes")
         lst = work / "all.txt"
         lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in scene_files), encoding="utf-8")
-        _must([ff, "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", "-movflags", "+faststart", str(out_path)], "Joining scenes")
+        joined = work / "joined.mp4"
+        _must([ff, "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", "-movflags", "+faststart", str(joined)], "Joining scenes")
+
+        music = project.get("music")
+        mpath = assets.path(music["asset"]) if (music and assets) else None
+        if mpath:
+            progress(0.96, "mixing music")
+            fade_start = max(0.0, t_offset - 2.0)
+            _must([ff, "-y", "-i", str(joined), "-stream_loop", "-1", "-i", str(mpath), "-filter_complex",
+                   f"[1:a]volume={music['volume']:.3f},afade=t=in:st=0:d=1.5,afade=t=out:st={fade_start:.2f}:d=2[m];"
+                   f"[0:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]",
+                   "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-t", f"{t_offset:.2f}",
+                   "-movflags", "+faststart", str(out_path)], "Mixing music")
+        else:
+            shutil.move(str(joined), str(out_path))
         progress(1.0, "done")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
-    srt = []
-    for idx, (a, b, text) in enumerate(srt_lines, 1):
-        srt.append(f"{idx}\n{srt_time(a)} --> {srt_time(b)}\n{text}\n")
+    srt = [f"{idx}\n{srt_time(a)} --> {srt_time(b)}\n{text}\n" for idx, (a, b, text) in enumerate(srt_lines, 1)]
     return {"duration": round(t_offset, 2), "srt": "\n".join(srt)}
 
 
 # ----------------------------------------------------------------------------- jobs
 
 class JobManager:
-    """Runs renders in background threads (one at a time per process). Job state lives on disk
-    (job.json), so any gunicorn worker can answer status requests and restarts don't lose results."""
+    """Runs renders and long audio exports in background threads (one heavy job at a time per process).
+    Job state lives on disk (job.json), so any gunicorn worker can answer status requests and restarts
+    don't lose results. Each user (owner) has their own asset folder."""
 
-    STALE_SECONDS = 600
+    STALE_SECONDS = 900
     MAX_ACTIVE = 4
+    FILES = ("video.mp4", "captions.srt", "speech.mp3")
 
     def __init__(self, data_dir: Path, ttl_seconds: int = 24 * 3600):
         self.root = Path(data_dir)
         self.jobs_dir = self.root / "jobs"
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
-        self.assets = AssetStore(self.root / "assets")
+        self.assets_root = self.root / "assets"
+        self.assets_root.mkdir(parents=True, exist_ok=True)
         self.ttl = ttl_seconds
+        self.referenced_fn: Callable[[], set[str]] = lambda: set()   # asset ids that saved projects still use
         self._render_lock = threading.Semaphore(1)
+
+    def assets_for(self, owner: str) -> AssetStore:
+        if not re.fullmatch(r"[a-z0-9]{8,64}", str(owner or "")):
+            raise VideoError("Unknown user.")
+        return AssetStore(self.assets_root / owner)
 
     # -- state on disk
     def _write(self, job: dict) -> None:
@@ -833,7 +1126,7 @@ class JobManager:
         except (OSError, ValueError):
             return None
         if job.get("status") in ("queued", "running") and time.time() - (d / "job.json").stat().st_mtime > self.STALE_SECONDS:
-            job.update(status="error", error="The render was interrupted. Please try again.", message="failed")
+            job.update(status="error", error="The job was interrupted. Please try again.", message="failed")
         return job
 
     def active_count(self) -> int:
@@ -844,7 +1137,7 @@ class JobManager:
                 n += 1
         return n
 
-    def cleanup(self) -> None:
+    def cleanup(self, referenced: set[str] | None = None) -> None:
         cutoff = time.time() - self.ttl
         for d in self.jobs_dir.iterdir():
             try:
@@ -852,34 +1145,60 @@ class JobManager:
                     shutil.rmtree(d, ignore_errors=True)
             except OSError:
                 pass
-        self.assets.cleanup(self.ttl)
+        keep = referenced if referenced is not None else self.referenced_fn()
+        for owner_dir in self.assets_root.iterdir():
+            if owner_dir.is_dir():
+                AssetStore(owner_dir).cleanup(self.ttl, keep)
 
-    def submit(self, project: dict, tts_fn=None) -> str:
+    def _new_job(self, kind: str) -> dict:
         self.cleanup()
         if self.active_count() >= self.MAX_ACTIVE:
-            raise VideoError("The server is busy rendering other videos. Please try again in a minute.")
+            raise VideoError("The server is busy with other jobs. Please try again in a minute.")
         job_id = uuid.uuid4().hex
         d = self.jobs_dir / job_id
         d.mkdir()
-        job = {"id": job_id, "status": "queued", "progress": 0.0, "message": "queued", "error": None,
-               "duration": None, "dir": str(d)}
+        job = {"id": job_id, "kind": kind, "status": "queued", "progress": 0.0, "message": "queued",
+               "error": None, "duration": None, "dir": str(d)}
         self._write(job)
-        threading.Thread(target=self._run, args=(job, project, tts_fn), daemon=True).start()
-        return job_id
+        return job
 
-    def _run(self, job: dict, project: dict, tts_fn) -> None:
+    def submit(self, project: dict, tts_fn=None, owner: str = "anonymous0") -> str:
+        """Start rendering a validated project. (`owner` selects whose uploads the project may use.)"""
+        job = self._new_job("video")
+        assets = self.assets_for(owner)
+
+        def work(d: Path, update):
+            info = render_project(project, d / "video.mp4", assets, lambda p, m: update(progress=round(p, 3), message=m), tts_fn)
+            (d / "captions.srt").write_text(info["srt"], encoding="utf-8")
+            return {"duration": info["duration"]}
+
+        threading.Thread(target=self._run, args=(job, work), daemon=True).start()
+        return job["id"]
+
+    def submit_tts(self, text: str, voice_id: str, rate: int = 0, pitch: int = 0, tts_fn=None) -> str:
+        """Start a long text-to-MP3 export."""
+        tts._validate(text, voice_id, rate, pitch, tts.max_text_chars())
+        job = self._new_job("audio")
+        fn = tts_fn or tts.synthesize_mp3
+
+        def work(d: Path, update):
+            data = fn(text, voice_id, rate, pitch, progress=lambda p: update(progress=round(p * 0.98, 3), message="speaking"))
+            (d / "speech.mp3").write_bytes(data)
+            return {}
+
+        threading.Thread(target=self._run, args=(job, work), daemon=True).start()
+        return job["id"]
+
+    def _run(self, job: dict, work) -> None:
         def update(**kw):
             job.update(kw)
             self._write(job)
 
         with self._render_lock:
             update(status="running", message="starting")
-            d = Path(job["dir"])
             try:
-                info = render_project(project, d / "video.mp4", self.assets,
-                                      lambda p, m: update(progress=round(p, 3), message=m), tts_fn)
-                (d / "captions.srt").write_text(info["srt"], encoding="utf-8")
-                update(status="done", progress=1.0, message="done", duration=info["duration"])
+                extra = work(Path(job["dir"]), update)
+                update(status="done", progress=1.0, message="done", **extra)
             except (VideoError, tts.TTSError, tts.TTSUnavailable) as exc:
                 update(status="error", error=str(exc), message="failed")
             except Exception as exc:  # never leave a job stuck in "running"
@@ -893,7 +1212,7 @@ class JobManager:
 
     def file(self, job_id: str, name: str) -> Path | None:
         job = self.get(job_id)
-        if not job or job["status"] != "done" or name not in ("video.mp4", "captions.srt"):
+        if not job or job["status"] != "done" or name not in self.FILES:
             return None
         p = Path(job["dir"]) / name
         return p if p.exists() else None

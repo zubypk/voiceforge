@@ -1,39 +1,75 @@
-"""TTS Studio: natural neural voices (edge-tts) with optional Google sign-in.
+"""VoiceForge: natural neural voices (edge-tts) + video studio, with optional Google sign-in.
 
 Environment:
-  GOOGLE_CLIENT_ID  OAuth client id (Google Cloud > APIs & Services > Credentials). Sign-in is hidden if unset.
-  REQUIRE_LOGIN     "1" = preview/export need a signed-in user. Default: sign-in is optional.
+  GOOGLE_CLIENT_ID       OAuth client id. Sign-in is hidden if unset.
+  REQUIRE_LOGIN          "1" = voice/video endpoints need a signed-in user. Default: sign-in is optional.
   ALLOWED_EMAIL_DOMAINS  optional comma list (e.g. "example.com") limiting who may sign in.
-  SECRET_KEY        cookie signing key (set it, or sessions reset on every restart).
-  COOKIE_SECURE     "1" when served over HTTPS (recommended).
+  SECRET_KEY             cookie signing key (set it, or sessions reset on every restart).
+  COOKIE_SECURE          "1" when served over HTTPS (recommended).
+  VF_DATA                folder for renders, uploads and saved projects (default ./data).
+  VF_MAX_TEXT_CHARS      longest text per MP3 export (default 100000; 0 = unlimited).
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 import secrets
+import uuid
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file, session
+from flask import Flask, g, jsonify, render_template, request, send_file, session
 
+import projects as projects_mod
+import translate as translate_mod
 import tts_module as tts
 import video
 import video_presets
+from samples import SAMPLES
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 160 * 1024 * 1024  # video uploads
-DATA_DIR = Path(os.environ.get("VF_DATA", Path(__file__).with_name("data")))
-jobs = video.JobManager(DATA_DIR)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE") == "1",
+    MAX_CONTENT_LENGTH=460 * 1024 * 1024,  # video uploads and project bundles
 )
+DATA_DIR = Path(os.environ.get("VF_DATA", Path(__file__).with_name("data")))
+jobs = video.JobManager(DATA_DIR)
+projects = projects_mod.ProjectStore(DATA_DIR / "projects")
+jobs.referenced_fn = projects.referenced_assets   # saved projects keep their media
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 REQUIRE_LOGIN = os.environ.get("REQUIRE_LOGIN") == "1"
 ALLOWED_DOMAINS = {d.strip().lower() for d in os.environ.get("ALLOWED_EMAIL_DOMAINS", "").split(",") if d.strip()}
+SYNC_EXPORT_CHARS = 12_000   # longer exports run as background jobs (proxies cut long requests)
+
+
+# ----------------------------------------------------------------------------- identity
+
+def owner_id() -> str:
+    """Who owns uploads and saved projects: the Google account if signed in, else a browser cookie."""
+    user = session.get("user")
+    if user and user.get("email"):
+        return "g" + hashlib.sha256(user["email"].lower().encode()).hexdigest()[:30]
+    uid = request.cookies.get("vf_uid", "")
+    if not (len(uid) == 32 and all(c in "0123456789abcdef" for c in uid)):
+        uid = uuid.uuid4().hex
+        g.new_uid = uid
+    return "a" + uid
+
+
+@app.after_request
+def after(resp):
+    uid = getattr(g, "new_uid", None)
+    if uid:
+        resp.set_cookie("vf_uid", uid, max_age=2 * 365 * 86400, httponly=True, samesite="Lax",
+                        secure=os.environ.get("COOKIE_SECURE") == "1")
+    resp.headers["Access-Control-Allow-Origin"] = os.environ.get("ALLOWED_ORIGIN", "*")
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    return resp
 
 
 def verify_google_token(credential: str) -> dict:
@@ -48,6 +84,14 @@ def verify_google_token(credential: str) -> dict:
         raise ValueError("Google email is not verified.")
     return claims
 
+
+def _login_gate():
+    if REQUIRE_LOGIN and not session.get("user"):
+        return jsonify(error="Please sign in with Google first.", login_required=True), 401
+    return None
+
+
+# ----------------------------------------------------------------------------- pages and auth
 
 @app.get("/")
 def index():
@@ -91,26 +135,21 @@ def api_logout():
     return jsonify(ok=True)
 
 
-@app.after_request
-def cors(resp):
-    resp.headers["Access-Control-Allow-Origin"] = os.environ.get("ALLOWED_ORIGIN", "*")
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    return resp
-
-
 @app.route("/api/<path:_>", methods=["OPTIONS"])
 def preflight(_):
     return ("", 204)
 
+
+# ----------------------------------------------------------------------------- voices and MP3
 
 @app.get("/api/voices")
 def api_voices():
     return jsonify(
         languages=[{"code": c, "label": l} for c, l in tts.list_languages()],
         voices=[{"id": v.id, "name": v.name, "language": v.language, "label": v.label, "gender": v.gender} for v in tts.VOICES],
-        limits={"max_text_chars": tts.MAX_TEXT_CHARS, "max_preview_chars": tts.MAX_PREVIEW_CHARS,
-                "rate": tts.RATE_RANGE, "pitch": tts.PITCH_RANGE},
+        samples=SAMPLES,
+        limits={"max_text_chars": tts.max_text_chars(), "max_preview_chars": tts.MAX_PREVIEW_CHARS,
+                "sync_export_chars": SYNC_EXPORT_CHARS, "rate": tts.RATE_RANGE, "pitch": tts.PITCH_RANGE},
     )
 
 
@@ -121,13 +160,20 @@ def _payload():
 
 
 def _error(exc: Exception):
-    return jsonify(error=str(exc)), (400 if isinstance(exc, tts.TTSError) else 502)
+    return jsonify(error=str(exc)), (400 if isinstance(exc, (tts.TTSError, video.VideoError, projects_mod.ProjectError)) else 502)
 
 
-def _login_gate():
-    if REQUIRE_LOGIN and not session.get("user"):
-        return jsonify(error="Please sign in with Google first.", login_required=True), 401
-    return None
+@app.post("/api/translate")
+def api_translate():
+    """{text, to, from?} -> {text}. `to`/`from` are voice locale codes (e.g. ar-SA) or bare language codes."""
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        out = translate_mod.translate(str(data.get("text", "")), str(data.get("to", "")), data.get("from") or None)
+    except translate_mod.TranslateError as exc:
+        return jsonify(error=str(exc)), (502 if "unavailable" in str(exc) else 400)
+    return jsonify(text=out)
 
 
 @app.post("/api/preview")
@@ -143,51 +189,128 @@ def api_preview():
 
 @app.post("/api/export")
 def api_export():
+    """Short texts: returns the MP3 directly. Longer texts: use POST /api/tts/jobs."""
     if (gate := _login_gate()):
         return gate
     try:
-        mp3 = tts.synthesize_mp3(*_payload())
+        text, voice, rate, pitch = _payload()
+        if len(text) > SYNC_EXPORT_CHARS:
+            return jsonify(error=f"Text over {SYNC_EXPORT_CHARS:,} characters must use POST /api/tts/jobs (a background job)."), 413
+        mp3 = tts.synthesize_mp3(text, voice, rate, pitch)
     except (tts.TTSError, tts.TTSUnavailable, ValueError) as exc:
         return _error(exc)
     return send_file(io.BytesIO(mp3), mimetype="audio/mpeg", as_attachment=True, download_name="speech.mp3")
 
 
+@app.post("/api/tts/jobs")
+def api_tts_job():
+    """Start a text-to-MP3 job of any length; poll /api/jobs/<id>, then download speech.mp3."""
+    if (gate := _login_gate()):
+        return gate
+    try:
+        text, voice, rate, pitch = _payload()
+        job_id = jobs.submit_tts(text, voice, rate, pitch)
+    except (tts.TTSError, video.VideoError, ValueError) as exc:
+        return _error(exc)
+    return jsonify(job_id=job_id), 202
+
+
+@app.get("/api/jobs/<job_id>")
+@app.get("/api/video/jobs/<job_id>")
+def api_job(job_id):
+    job = jobs.get(job_id)
+    if not job:
+        return jsonify(error="Job not found (it may have expired)."), 404
+    return jsonify({k: job.get(k) for k in ("id", "kind", "status", "progress", "message", "error", "duration")})
+
+
+@app.get("/api/jobs/<job_id>/<name>")
+@app.get("/api/video/jobs/<job_id>/<name>")
+def api_job_file(job_id, name):
+    path = jobs.file(job_id, name)
+    if not path:
+        return jsonify(error="File not available."), 404
+    if name == "video.mp4":
+        return send_file(path, mimetype="video/mp4", conditional=True,
+                         as_attachment=request.args.get("download") == "1", download_name="video.mp4")
+    if name == "speech.mp3":
+        return send_file(path, mimetype="audio/mpeg", conditional=True, as_attachment=True, download_name="speech.mp3")
+    return send_file(path, mimetype="application/x-subrip", as_attachment=True, download_name="captions.srt")
+
+
 # ----------------------------------------------------------------------------- video studio
-
-def _video_error(exc: Exception):
-    code = 400 if isinstance(exc, (video.VideoError, tts.TTSError)) else 502
-    return jsonify(error=str(exc)), code
-
 
 @app.get("/api/video/config")
 def api_video_config():
+    dims = {r: {res: list(video.dimensions(r, res)) for res in video.RESOLUTIONS} for r in video.RATIOS}
     return jsonify(
-        sizes=[{"id": k, **v} for k, v in video.SIZES.items()],
-        themes=[{"id": k, "label": v["label"], "bg": v["bg"], "text": v["text"], "accent": v["accent"]}
-                for k, v in video.THEMES.items()],
+        ratios=[{"id": k, "label": v["label"]} for k, v in video.RATIOS.items()],
+        resolutions=[{"id": k, "label": v["label"]} for k, v in video.RESOLUTIONS.items()],
+        dimensions=dims,
+        max_seconds=video.MAX_SECONDS,
+        themes=[{"id": k, "label": v["label"], "bg": v["bg"], "text": v["text"], "accent": v["accent"]} for k, v in video.THEMES.items()],
         layouts=list(video.LAYOUTS),
-        limits=video.LIMITS,
-        presets=[{"id": k, "label": v["label"], "desc": v["desc"], "size": v["size"], "theme": v["theme"],
-                  "scenes": v["scenes"]} for k, v in video_presets.PRESETS.items()],
+        media_positions=list(video.MEDIA_POSITIONS),
+        limits={k: v for k, v in video.LIMITS.items() if k != "max_seconds"},
+        presets=[{"id": k, "label": v["label"], "desc": v["desc"], "ratio": v["ratio"], "resolution": v["resolution"],
+                  "theme": v["theme"], "scenes": v["scenes"]} for k, v in video_presets.PRESETS.items()],
     )
+
+
+def _assets():
+    return jobs.assets_for(owner_id())
 
 
 @app.post("/api/video/assets")
 def api_video_assets():
+    """Upload an image, video clip or audio file to the user's library."""
     if (gate := _login_gate()):
         return gate
     f = request.files.get("file")
     if not f:
         return jsonify(error="No file uploaded."), 400
     try:
-        return jsonify(jobs.assets.save(f.read(), f.filename or ""))
+        return jsonify(_assets().save(f.read(), f.filename or ""))
     except video.VideoError as exc:
-        return _video_error(exc)
+        return _error(exc)
+
+
+@app.get("/api/assets")
+def api_assets_list():
+    store = _assets()
+    return jsonify(assets=store.list(), used_bytes=store.total_bytes(), quota_bytes=video.LIMITS["owner_quota_bytes"])
+
+
+@app.get("/api/assets/<asset_id>/thumb")
+def api_asset_thumb(asset_id):
+    path = _assets().thumb(asset_id)
+    if not path:
+        return jsonify(error="No preview."), 404
+    return send_file(path, mimetype="image/jpeg", max_age=3600)
+
+
+@app.get("/api/assets/<asset_id>/file")
+def api_asset_file(asset_id):
+    store = _assets()
+    path, meta = store.path(asset_id), store.meta(asset_id)
+    if not path or not meta:
+        return jsonify(error="Not found."), 404
+    mime = {"video": "video/mp4", "audio": "audio/mpeg"}.get(meta["kind"], "image/png")
+    return send_file(path, mimetype=mime, conditional=True)
+
+
+@app.delete("/api/assets/<asset_id>")
+def api_asset_delete(asset_id):
+    if (gate := _login_gate()):
+        return gate
+    if not _assets().delete(asset_id):
+        return jsonify(error="Not found."), 404
+    return jsonify(ok=True)
 
 
 def _project_from_request():
     data = request.get_json(silent=True) or {}
-    return video.validate_project(data.get("project"), jobs.assets), data
+    return video.validate_project(data.get("project"), _assets()), data
 
 
 @app.post("/api/video/preview")
@@ -202,10 +325,11 @@ def api_video_preview():
         if not isinstance(scenes, list) or not (0 <= index < len(scenes)):
             raise video.VideoError("Scene not found.")
         # Only the selected scene is validated, so other unfinished scenes never block the preview.
-        project = video.validate_project({**raw, "scenes": [scenes[index]]}, jobs.assets, allow_empty=True)
-        png = video.render_preview_png(project, 0, jobs.assets)
+        assets = _assets()
+        project = video.validate_project({**raw, "scenes": [scenes[index]]}, assets, allow_empty=True)
+        png = video.render_preview_png(project, 0, assets)
     except (video.VideoError, ValueError) as exc:
-        return _video_error(exc)
+        return _error(exc)
     return send_file(io.BytesIO(png), mimetype="image/png")
 
 
@@ -215,29 +339,81 @@ def api_video_render():
         return gate
     try:
         project, _ = _project_from_request()
-        job_id = jobs.submit(project)
+        job_id = jobs.submit(project, owner=owner_id())
     except video.VideoError as exc:
-        return _video_error(exc)
+        return _error(exc)
     return jsonify(job_id=job_id), 202
 
 
-@app.get("/api/video/jobs/<job_id>")
-def api_video_job(job_id):
-    job = jobs.get(job_id)
-    if not job:
-        return jsonify(error="Job not found (it may have expired)."), 404
-    return jsonify({k: job[k] for k in ("id", "status", "progress", "message", "error", "duration")})
+# ----------------------------------------------------------------------------- saved projects
+
+@app.get("/api/projects")
+def api_projects_list():
+    return jsonify(projects=projects.list(owner_id()))
 
 
-@app.get("/api/video/jobs/<job_id>/<name>")
-def api_video_file(job_id, name):
-    path = jobs.file(job_id, name)
-    if not path:
-        return jsonify(error="File not available."), 404
-    if name == "video.mp4":
-        return send_file(path, mimetype="video/mp4", conditional=True,
-                         as_attachment=request.args.get("download") == "1", download_name="video.mp4")
-    return send_file(path, mimetype="application/x-subrip", as_attachment=True, download_name="captions.srt")
+@app.post("/api/projects")
+def api_projects_save():
+    """Create (no id) or update (id) a saved project: {id?, name, project}."""
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(projects.save(owner_id(), data.get("name"), data.get("project"), data.get("id")))
+    except projects_mod.ProjectError as exc:
+        return _error(exc)
+
+
+@app.post("/api/projects/import")
+def api_projects_import():
+    """Import a .voiceforge.zip bundle (with media) or a plain project .json."""
+    if (gate := _login_gate()):
+        return gate
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="No file uploaded."), 400
+    owner = owner_id()
+    try:
+        return jsonify(projects.import_bundle(owner, f.read(), jobs.assets_for(owner)))
+    except (projects_mod.ProjectError, video.VideoError) as exc:
+        return _error(exc)
+
+
+@app.get("/api/projects/<pid>")
+def api_projects_get(pid):
+    try:
+        return jsonify(projects.get(owner_id(), pid))
+    except projects_mod.ProjectError as exc:
+        return jsonify(error=str(exc)), 404
+
+
+@app.delete("/api/projects/<pid>")
+def api_projects_delete(pid):
+    try:
+        projects.delete(owner_id(), pid)
+    except projects_mod.ProjectError as exc:
+        return jsonify(error=str(exc)), 404
+    return jsonify(ok=True)
+
+
+@app.post("/api/projects/<pid>/duplicate")
+def api_projects_duplicate(pid):
+    try:
+        return jsonify(projects.duplicate(owner_id(), pid, (request.get_json(silent=True) or {}).get("name")))
+    except projects_mod.ProjectError as exc:
+        return jsonify(error=str(exc)), 404
+
+
+@app.get("/api/projects/<pid>/bundle")
+def api_projects_bundle(pid):
+    owner = owner_id()
+    try:
+        data = projects.export_bundle(owner, pid, jobs.assets_for(owner))
+        name = projects.get(owner, pid)["name"]
+    except projects_mod.ProjectError as exc:
+        return jsonify(error=str(exc)), 404
+    safe = "".join(c if c.isalnum() or c in "-_ " else "_" for c in name).strip() or "project"
+    return send_file(io.BytesIO(data), mimetype="application/zip", as_attachment=True, download_name=f"{safe}.voiceforge.zip")
 
 
 if __name__ == "__main__":

@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VoiceForge — Text to Speech &amp; Video Studio</title>
-<meta name="description" content="Natural voices in 75 languages (Arabic first) and a video studio for educational videos with narration, captions, YouTube/Shorts/Instagram presets and MP4 export.">
+<meta name="description" content="Natural voices in more than 70 languages (Arabic first) and a video studio for educational videos with narration, captions, YouTube/Shorts/Instagram presets, up to 4K MP4 export.">
 <style>
   :root{--bg:#0b0d14;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.07);--line:rgba(255,255,255,.1);--text:#eef0f7;--muted:#9aa3b8;
-    --accent:#7c5cff;--accent2:#3ea6ff;--ok:#3ddc97;--err:#ff6b81;--grad:linear-gradient(135deg,#7c5cff 0%,#3ea6ff 100%);--radius:16px}
+    --accent:#7c5cff;--accent2:#3ea6ff;--ok:#3ddc97;--err:#ff6b81;--warn:#ffc857;--grad:linear-gradient(135deg,#7c5cff 0%,#3ea6ff 100%);--radius:16px}
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Naskh Arabic","Noto Sans Arabic",Tahoma,sans-serif;
     background:radial-gradient(1100px 600px at 80% -10%,rgba(124,92,255,.22),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(62,166,255,.16),transparent 55%),var(--bg);
     color:var(--text);line-height:1.6}
   a{color:var(--accent2);text-decoration:none}
-  .wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
   nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);background:rgba(11,13,20,.72);border-bottom:1px solid var(--line)}
-  .nav-in{display:flex;align-items:center;gap:12px;padding:12px 18px;max-width:1040px;margin:0 auto}
+  .nav-in{display:flex;align-items:center;gap:12px;padding:12px 18px;max-width:1080px;margin:0 auto}
   .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--text)}
   .logo i{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;font-style:normal;font-size:16px}
   .links{display:flex;gap:2px;margin-inline-start:14px}
@@ -25,14 +25,14 @@
   .chip{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer}
   .chip:hover{border-color:var(--accent)}
   #user{display:none;align-items:center;gap:8px;font-size:13px}#user img{width:28px;height:28px;border-radius:50%}
-  .hero{padding:48px 0 22px;text-align:center}
+  .hero{padding:44px 0 20px;text-align:center}
   .badge{display:inline-block;font-size:12px;color:var(--accent2);border:1px solid rgba(62,166,255,.35);background:rgba(62,166,255,.08);padding:5px 12px;border-radius:999px;margin-bottom:14px}
   h1{font-size:clamp(28px,5vw,46px);line-height:1.15;margin:0 0 12px;letter-spacing:-.02em}
   h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p{color:var(--muted);font-size:17px;max-width:680px;margin:0 auto 20px}
+  .hero p{color:var(--muted);font-size:17px;max-width:700px;margin:0 auto 20px}
   .stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 16px;font-size:13px;color:var(--muted)}.stat b{display:block;color:var(--text);font-size:18px}
-  section{padding:26px 0}
+  section{padding:24px 0}
   h2{font-size:26px;margin:0 0 6px}h3{margin:0 0 10px;font-size:17px}
   .sub{color:var(--muted);margin:0 0 18px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
@@ -42,7 +42,7 @@
   select,textarea,input[type=text],input[type=number]{width:100%;background:rgba(0,0,0,.28);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit}
   select:focus,textarea:focus,input:focus{outline:2px solid rgba(124,92,255,.55);border-color:transparent}
   textarea{min-height:110px;resize:vertical;line-height:1.7}
-  #text{min-height:170px;font-size:17px;line-height:1.8}
+  #text{min-height:200px;font-size:17px;line-height:1.8}
   .seg{display:flex;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
   .seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:8px 0;border-radius:9px;font:inherit;cursor:pointer}
   .seg button.on{background:var(--grad);color:#fff;font-weight:600}
@@ -59,37 +59,60 @@
   .status{min-height:20px;font-size:14px;color:var(--muted);margin-top:10px}.status.err{color:var(--err)}.status.ok{color:var(--ok)}
   canvas{width:100%;height:120px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line);cursor:pointer;display:block}
   .player{display:flex;align-items:center;gap:12px;margin-top:12px}.time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
-  audio{display:none}
-  .pill{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--muted)}
-  /* tabs */
+  #audio{display:none}
+  .pill{display:inline-block;font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--line);color:var(--muted)}
+  .pill.ok{color:var(--ok);border-color:rgba(61,220,151,.4)}.pill.warn{color:var(--warn);border-color:rgba(255,200,87,.4)}
+  .warn-box{background:rgba(255,200,87,.08);border:1px solid rgba(255,200,87,.35);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:14px}
+  .warn-box b{color:var(--warn)}
   .tabs{display:flex;gap:8px;margin:6px 0 20px;flex-wrap:wrap}
   .tab{flex:1;min-width:160px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:14px;padding:13px 16px;font:inherit;font-size:16px;cursor:pointer}
   .tab.on{background:var(--grad);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 8px 26px rgba(124,92,255,.3)}
   .view{display:none}.view.on{display:block}
-  /* video studio */
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .pcard{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;text-align:start;color:var(--text);font:inherit}
   .pcard:hover,.pcard.on{border-color:var(--accent)}.pcard.on{box-shadow:0 0 0 2px rgba(124,92,255,.35)}
   .pcard b{display:block;margin-bottom:3px}.pcard span{color:var(--muted);font-size:13px;line-height:1.4;display:block}
   .size{display:flex;gap:12px;align-items:center}
   .size .ar{border:2px solid var(--accent2);border-radius:5px;background:rgba(62,166,255,.12);flex:none}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .rchip{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:12px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer;text-align:center}
+  .rchip small{display:block;color:var(--muted);font-size:11px}
+  .rchip.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,92,255,.35)}
   .swatches{display:flex;gap:8px;flex-wrap:wrap}
   .sw{border:2px solid transparent;border-radius:12px;padding:3px;cursor:pointer;background:none;color:var(--text);font:inherit;font-size:12px}
-  .sw i{display:block;width:74px;height:40px;border-radius:9px;margin-bottom:3px}
-  .sw.on{border-color:var(--accent)}
+  .sw i{display:block;width:74px;height:40px;border-radius:9px;margin-bottom:3px}.sw.on{border-color:var(--accent)}
   .editor{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
   .slist{display:flex;flex-direction:column;gap:6px;max-height:640px;overflow:auto}
   .sitem{display:flex;gap:9px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;cursor:pointer;text-align:start;color:var(--text);font:inherit}
   .sitem.on{border-color:var(--accent);background:rgba(124,92,255,.14)}
   .sitem em{font-style:normal;background:var(--grad);border-radius:7px;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px;flex:none}
   .sitem span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .sub-card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .mediarow{display:flex;gap:12px;align-items:center}
+  .thumb{width:84px;height:56px;border-radius:9px;object-fit:cover;background:#000;border:1px solid var(--line);flex:none}
+  .thumb.empty{display:grid;place-items:center;color:var(--muted);font-size:22px}
   .preview{width:100%;border-radius:12px;border:1px solid var(--line);background:#000;display:block;min-height:120px;object-fit:contain}
   .hint{color:var(--muted);font-size:13px}
   .bar{height:12px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:12px}
   .bar i{display:block;height:100%;width:0;background:var(--grad);transition:width .4s}
   video{width:100%;max-height:520px;border-radius:12px;background:#000;display:block}
   .check{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text);text-transform:none;letter-spacing:0;margin:0}.check input{width:auto;accent-color:var(--accent)}
-  /* guide / about */
+  .pbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pbar input{flex:1;min-width:200px;font-size:17px;font-weight:600}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:5vh 14px;overflow:auto}
+  .modal.on{display:flex}
+  .modal-box{background:#141826;border:1px solid var(--line);border-radius:18px;width:min(820px,100%);padding:18px}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:18px}
+  .lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .asset{background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;position:relative}
+  .asset:hover{border-color:var(--accent)}
+  .asset img,.asset .ph{width:100%;height:94px;object-fit:cover;display:grid;place-items:center;font-size:30px;background:#000}
+  .asset div{padding:6px 8px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .asset .x{position:absolute;top:4px;inset-inline-end:4px;background:rgba(0,0,0,.65);border:0;color:#fff;border-radius:8px;cursor:pointer;padding:2px 7px}
+  .plist{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .prow{display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .prow b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prow span{color:var(--muted);font-size:12px}
+  .toast{position:fixed;bottom:20px;inset-inline:0;margin:auto;width:max-content;max-width:92vw;background:#1c2236;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:60;display:none}
+  .toast.on{display:block}.toast.err{border-color:var(--err);color:var(--err)}
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;counter-reset:s}
   .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
   .step::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:var(--grad);font-weight:700;margin-bottom:10px}
@@ -100,7 +123,7 @@
   .tscroll{max-height:380px;overflow:auto}
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
   pre{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:14px;overflow:auto;direction:ltr;text-align:left;margin:10px 0 0}
-  .kv{display:grid;grid-template-columns:150px 1fr;gap:8px 14px;font-size:14px}.kv div:nth-child(odd){color:var(--muted)}
+  .kv{display:grid;grid-template-columns:170px 1fr;gap:8px 14px;font-size:14px}.kv div:nth-child(odd){color:var(--muted)}
   details{border-top:1px solid var(--line);padding:12px 0}details:first-of-type{border-top:0}summary{cursor:pointer;font-weight:600}details p{color:var(--muted);margin:8px 0 0}
   footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px;text-align:center}
   @media(max-width:820px){.grid2,.grid3,.steps,.editor{grid-template-columns:1fr}.links{display:none}.kv{grid-template-columns:1fr}.slist{max-height:none;flex-direction:row;overflow-x:auto}.sitem{flex:none;max-width:200px}}
@@ -125,12 +148,12 @@
 <header class="hero">
   <span class="badge" data-i="badge">Natural voices · Video studio · Arabic first</span>
   <h1><span data-i="h1a">Turn text into</span> <span data-i="h1b">voice and video</span></h1>
-  <p data-i="lead">Natural speech in 75 languages, plus a video studio that turns your lesson into a narrated MP4 — for YouTube, Shorts, Instagram and the classroom.</p>
+  <p data-i="lead">Natural speech in 75 languages, plus a video studio.</p>
   <div class="stats">
     <div class="stat"><b id="sLang">75</b><span data-i="stat_lang">languages</span></div>
-    <div class="stat"><b id="sVoice">322</b><span data-i="stat_voice">voices</span></div>
-    <div class="stat"><b id="sFmt">6</b><span data-i="stat_fmt">video formats</span></div>
-    <div class="stat"><b>MP3 · MP4</b><span data-i="stat_out">export</span></div>
+    <div class="stat"><b id="sVoice">315</b><span data-i="stat_voice">voices</span></div>
+    <div class="stat"><b id="sFmt">6</b><span data-i="stat_fmt">screen formats</span></div>
+    <div class="stat"><b>720p–4K</b><span data-i="stat_res">up to 4K</span></div>
   </div>
 </header>
 
@@ -157,12 +180,25 @@
     <div class="card">
       <label for="text" data-i="text">Text</label>
       <textarea id="text" dir="auto"></textarea>
+      <div class="warn-box" id="textWarn" style="display:none">
+        <b data-i="mismatch_title">The text doesn't match the voice</b>
+        <div id="textWarnMsg" style="margin:4px 0 8px"></div>
+        <button class="btn sm" id="fixVoice" data-i="mismatch_fix_voice">Switch to a matching voice</button>
+        <button class="btn sm" id="fixText" data-i="mismatch_fix_text">Use a sample in this language</button>
+      </div>
+      <div class="row" id="trRow" style="align-items:flex-end">
+        <div style="flex:1;min-width:180px"><label for="trLang" data-i="tr_to">Translate text to</label><select id="trLang"></select></div>
+        <button class="btn" id="trBtn" data-i="tr_go">🌐 Translate</button>
+        <button class="btn" id="trUndo" data-i="tr_undo" style="display:none">↩ Undo</button>
+      </div>
       <div class="row">
         <button class="btn primary" id="previewBtn" data-i="preview">▶ Preview</button>
         <button class="btn" id="exportBtn" data-i="export">⬇ Export MP3</button>
         <button class="btn" id="sampleBtn" data-i="sample">Insert sample</button>
+        <button class="btn" id="detectBtn" data-i="detect">Detect language</button>
         <span class="count" id="count"></span>
       </div>
+      <div class="bar" id="expBar" style="display:none"><i id="expFill"></i></div>
       <div class="status" id="status" role="status"></div>
     </div>
     <div class="card">
@@ -175,22 +211,37 @@
   <!-- ===================== VIDEO ===================== -->
   <div class="view" id="viewVideo">
     <div class="card">
+      <div class="pbar"><input type="text" id="pName" maxlength="80" data-iph="p_name_ph" aria-label="Project name"><span class="pill" id="pStatus"></span></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm" id="pNew" data-i="p_new">＋ New</button>
+        <button class="btn sm" id="pOpen" data-i="p_open">📂 Open…</button>
+        <button class="btn sm primary" id="pSave" data-i="p_save">💾 Save</button>
+        <button class="btn sm" id="pSaveAs" data-i="p_saveas">Save as…</button>
+        <button class="btn sm" id="pDup" data-i="p_dup">Duplicate</button>
+        <button class="btn sm" id="pExportZip" data-i="p_export_bundle">Project + media (.zip)</button>
+        <button class="btn sm" id="pExportJson" data-i="p_export_json">Project only (.json)</button>
+        <label class="btn sm" style="margin:0;text-transform:none;letter-spacing:0"><span data-i="p_import">⬆ Import</span><input type="file" id="pImportFile" accept=".zip,.json,application/zip,application/json" hidden></label>
+        <button class="btn sm danger" id="pDelete" data-i="p_delete">Delete</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3 data-i="v_start">1 · Start from a preset</h3>
-      <p class="hint" data-i="v_start_h">Pick a ready-made structure, then edit every scene. Each preset sets the format, theme and sample narration in your language.</p>
+      <p class="hint" data-i="v_start_h"></p>
       <div class="cards" id="presetCards"></div>
     </div>
 
     <div class="card">
-      <h3 data-i="v_format">2 · Format &amp; style</h3>
-      <span class="lbl" data-i="v_size">Screen size</span>
-      <div class="cards" id="sizeCards"></div>
+      <h3 data-i="v_format">2 · Format, resolution & style</h3>
+      <span class="lbl" data-i="v_ratio">Screen shape</span>
+      <div class="cards" id="ratioCards"></div>
+      <span class="lbl" style="margin-top:16px" data-i="v_resolution">Resolution</span>
+      <div class="chips" id="resChips"></div>
+      <div class="hint" id="resNote" style="margin-top:8px"></div>
       <div class="grid2" style="margin-top:16px">
         <div><span class="lbl" data-i="v_theme">Theme</span><div class="swatches" id="themeSw"></div></div>
-        <div>
-          <span class="lbl" data-i="v_options">Options</span>
-          <label class="check"><input type="checkbox" id="vCaptions" checked><span data-i="v_captions">Burn captions into the video</span></label>
-          <label class="check" style="margin-top:8px"><input type="checkbox" id="vDraft"><span data-i="v_draft">Draft quality (faster, half size)</span></label>
-        </div>
+        <div><span class="lbl" data-i="v_options">Options</span>
+          <label class="check"><input type="checkbox" id="vCaptions" checked><span data-i="v_captions">Burn captions into the video</span></label></div>
       </div>
     </div>
 
@@ -209,7 +260,26 @@
     </div>
 
     <div class="card">
-      <h3 data-i="v_scenes">4 · Scenes</h3>
+      <h3 data-i="v_music">4 · Background music (optional)</h3>
+      <div class="mediarow">
+        <div class="thumb empty">♪</div>
+        <div style="flex:1">
+          <div id="musicName" class="hint" data-i="v_music_none">No music</div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn sm" id="musicPick" data-i="v_music_pick">Choose / upload music…</button>
+            <button class="btn sm danger" id="musicClear" data-i="v_music_remove">Remove music</button>
+          </div>
+        </div>
+      </div>
+      <div id="musicBox" style="display:none;margin-top:12px">
+        <label for="musicVol"><span data-i="v_music_vol">Music volume</span><span class="val" id="musicVolVal">15%</span></label>
+        <input id="musicVol" type="range" min="0" max="100" value="15">
+        <audio id="musicAudio" controls style="width:100%;margin-top:8px"></audio>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 data-i="v_scenes">5 · Scenes</h3>
       <div class="editor">
         <div>
           <div class="slist" id="sceneList"></div>
@@ -217,8 +287,7 @@
         </div>
         <div id="sceneEditor">
           <div class="row" style="margin-top:0">
-            <b id="sceneTitleHead"></b>
-            <span style="flex:1"></span>
+            <b id="sceneTitleHead"></b><span style="flex:1"></span>
             <button class="btn sm" id="sUp" title="Move up">↑</button>
             <button class="btn sm" id="sDown" title="Move down">↓</button>
             <button class="btn sm" id="sDup" data-i="v_dup">Duplicate</button>
@@ -226,21 +295,36 @@
           </div>
           <div class="grid2" style="margin-top:12px">
             <div><label for="sLayout" data-i="v_layout">Layout</label>
-              <select id="sLayout"><option value="title" data-i="l_title">Title</option><option value="bullets" data-i="l_bullets">Title + bullets</option><option value="text" data-i="l_text">Title + paragraph</option><option value="quote" data-i="l_quote">Quote</option></select></div>
+              <select id="sLayout"><option value="title" data-i="l_title">Title</option><option value="bullets" data-i="l_bullets">Title + bullets</option><option value="text" data-i="l_text">Title + paragraph</option><option value="quote" data-i="l_quote">Quote</option><option value="media" data-i="l_media">Picture / video + caption</option></select></div>
             <div><label for="sTitle" data-i="v_title">Title</label><input type="text" id="sTitle" dir="auto" maxlength="200"></div>
           </div>
-          <div style="margin-top:12px"><label for="sBody" data-i="v_body">On-screen text (one bullet per line)</label><textarea id="sBody" dir="auto" style="min-height:90px" maxlength="1500"></textarea></div>
-          <div style="margin-top:12px"><label for="sNarr"><span data-i="v_narr">Narration (spoken, also used for captions)</span><span class="val" id="narrCount"></span></label><textarea id="sNarr" dir="auto" maxlength="3000"></textarea></div>
+          <div style="margin-top:12px"><label for="sBody" data-i="v_body">On-screen text</label><textarea id="sBody" dir="auto" style="min-height:90px" maxlength="1500"></textarea></div>
+          <div id="narrWarn" class="warn-box" style="display:none"></div>
+          <div style="margin-top:12px"><label for="sNarr"><span data-i="v_narr">Narration</span><span class="val" id="narrCount"></span></label><textarea id="sNarr" dir="auto" style="min-height:130px"></textarea></div>
+
+          <div class="sub-card" id="mediaBox">
+            <label data-i="v_media">Picture or video in this scene</label>
+            <div class="mediarow">
+              <img class="thumb" id="mediaThumb" alt="" style="display:none">
+              <div class="thumb empty" id="mediaEmpty">🖼</div>
+              <div style="flex:1"><div id="mediaName" class="hint" data-i="v_media_none">None</div>
+                <div class="row" style="margin-top:6px"><button class="btn sm" id="mediaPick" data-i="v_media_pick">Choose / upload…</button><button class="btn sm danger" id="mediaClear" data-i="v_media_remove">Remove</button></div></div>
+            </div>
+            <div class="grid2" id="mediaOpts" style="margin-top:10px">
+              <div><label for="mediaPos" data-i="v_media_pos">Position</label><select id="mediaPos"><option value="auto" data-i="pos_auto">Automatic</option><option value="left" data-i="pos_left">Left</option><option value="right" data-i="pos_right">Right</option><option value="top" data-i="pos_top">Top</option><option value="bottom" data-i="pos_bottom">Bottom</option></select></div>
+              <div><label for="mediaFit" data-i="v_media_fit">Fit</label><select id="mediaFit"><option value="contain" data-i="fit_contain">Show all (fit)</option><option value="cover" data-i="fit_cover">Fill (crop)</option></select></div>
+            </div>
+            <div class="hint" style="margin-top:6px" data-i="v_media_hint"></div>
+          </div>
+
           <div class="grid3" style="margin-top:12px">
             <div><label for="sBgType" data-i="v_bg">Background</label>
               <select id="sBgType"><option value="theme" data-i="b_theme">Theme gradient</option><option value="color" data-i="b_color">Solid colour</option><option value="image" data-i="b_image">Image</option><option value="video" data-i="b_video">Video clip</option></select></div>
             <div id="bgExtra"></div>
-            <div><label for="sDur" data-i="v_dur">Duration (seconds)</label><input type="number" id="sDur" min="2" max="180" step="0.5" placeholder="auto">
-              <span class="hint" data-i="v_dur_h">Leave empty to follow the narration.</span></div>
+            <div><label for="sDur" data-i="v_dur">Duration (seconds)</label><input type="number" id="sDur" min="2" max="600" step="0.5" placeholder="auto"><span class="hint" data-i="v_dur_h"></span></div>
           </div>
           <div class="grid2" style="margin-top:12px">
-            <div><label for="sTrans" data-i="v_trans">Transition</label><select id="sTrans"><option value="fade" data-i="t_fade">Fade</option><option value="none" data-i="t_none">None (cut)</option></select></div>
-            <div></div>
+            <div><label for="sTrans" data-i="v_trans">Transition</label><select id="sTrans"><option value="fade" data-i="t_fade">Fade</option><option value="none" data-i="t_none">None (cut)</option></select></div><div></div>
           </div>
           <div style="margin-top:14px">
             <div class="row" style="margin-top:0"><span class="lbl" style="margin:0" data-i="v_preview">Slide preview</span><span class="hint" id="prevNote"></span></div>
@@ -251,20 +335,17 @@
     </div>
 
     <div class="card">
-      <h3 data-i="v_render">5 · Render &amp; export</h3>
+      <h3 data-i="v_render">6 · Render & export</h3>
       <div class="row" style="margin-top:0">
         <button class="btn primary" id="renderBtn" data-i="v_render_btn">🎬 Render MP4</button>
-        <span class="pill" id="estimate"></span>
+        <span class="pill" id="outInfo"></span><span class="pill" id="estimate"></span>
       </div>
+      <div id="renderWarn" class="warn-box" style="display:none"></div>
       <div class="bar" id="bar" style="display:none"><i id="barFill"></i></div>
       <div class="status" id="vStatus" role="status"></div>
       <div id="result" style="display:none;margin-top:14px">
         <video id="outVideo" controls playsinline></video>
-        <div class="row">
-          <a class="btn primary" id="dlMp4" href="#" data-i="v_dl">⬇ Download MP4</a>
-          <a class="btn" id="dlSrt" href="#" data-i="v_srt">⬇ Captions (.srt)</a>
-          <span class="hint" id="resInfo"></span>
-        </div>
+        <div class="row"><a class="btn primary" id="dlMp4" href="#" data-i="v_dl">⬇ Download MP4</a><a class="btn" id="dlSrt" href="#" data-i="v_srt">⬇ Captions (.srt)</a><span class="hint" id="resInfo"></span></div>
       </div>
     </div>
   </div>
@@ -272,69 +353,52 @@
 
 <section id="guide">
   <h2 data-i="guide_t">How to use it</h2>
-  <p class="sub" data-i="guide_s">From text to voice, and from lesson to video.</p>
+  <p class="sub" data-i="guide_s"></p>
   <div class="steps">
-    <div class="step"><b data-i="s1t">Choose a voice</b><span data-i="s1d">Pick a language, then Male or Female, then a voice name.</span></div>
-    <div class="step"><b data-i="s2t">Write your text</b><span data-i="s2d">Type or paste up to 5,000 characters. Arabic runs right-to-left automatically.</span></div>
-    <div class="step"><b data-i="s3t">Preview</b><span data-i="s3d">Hear the first 300 characters and click the waveform to jump around.</span></div>
-    <div class="step"><b data-i="s4t">Export MP3</b><span data-i="s4d">Render the full text and download speech.mp3.</span></div>
+    <div class="step"><b data-i="s1t"></b><span data-i="s1d"></span></div>
+    <div class="step"><b data-i="s2t"></b><span data-i="s2d"></span></div>
+    <div class="step"><b data-i="s3t"></b><span data-i="s3d"></span></div>
+    <div class="step"><b data-i="s4t"></b><span data-i="s4d"></span></div>
   </div>
-  <div class="card" style="margin-top:16px">
-    <h3 data-i="vg_t">Making a video</h3>
+  <div class="card" style="margin-top:16px"><h3 data-i="vg_t"></h3>
     <ul class="tips">
-      <li><b data-i="vg1b">Start from a preset.</b> <span data-i="vg1">Lesson, YouTube explainer, Short, course intro or quiz — each with sample scenes in your language.</span></li>
-      <li><b data-i="vg2b">One scene = one idea.</b> <span data-i="vg2">Put the on-screen text in “Text” and what you say in “Narration”. Scene length follows the narration.</span></li>
-      <li><b data-i="vg3b">Pick the screen size for where it will play:</b> <span data-i="vg3">16:9 for YouTube, 9:16 for Shorts, TikTok and Reels, 1:1 or 4:5 for Instagram, 4:3 for classrooms.</span></li>
-      <li><b data-i="vg4b">Add your own images or video</b> <span data-i="vg4">as a scene background (PNG, JPG, WEBP, MP4, MOV, WEBM). Uploads are kept for 24 hours.</span></li>
-      <li><b data-i="vg5b">Draft first.</b> <span data-i="vg5">Tick “Draft quality” to check timing quickly, then render the final video.</span></li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3 data-i="tips_t">Tips for better results</h3>
+      <li><b data-i="vg1b"></b> <span data-i="vg1"></span></li><li><b data-i="vg2b"></b> <span data-i="vg2"></span></li>
+      <li><b data-i="vg3b"></b> <span data-i="vg3"></span></li><li><b data-i="vg4b"></b> <span data-i="vg4"></span></li><li><b data-i="vg5b"></b> <span data-i="vg5"></span></li>
+    </ul></div>
+  <div class="card"><h3 data-i="tips_t"></h3>
     <ul class="tips">
-      <li><b data-i="tip1b">Punctuation sets the rhythm.</b> <span data-i="tip1">Commas and full stops create natural pauses; use «،» and «.» in Arabic.</span></li>
-      <li><b data-i="tip2b">Arabic diacritics (تشكيل)</b> <span data-i="tip2">help with ambiguous words, e.g. names and rare vocabulary.</span></li>
-      <li><b data-i="tip3b">Numbers and dates</b> <span data-i="tip3">are read in the selected language; write them out if you need a specific reading.</span></li>
-      <li><b data-i="tip4b">Speed and pitch</b> <span data-i="tip4">change delivery. Try −10% speed for clearer teaching.</span></li>
-    </ul>
-  </div>
-  <div class="card">
-    <h3 data-i="voices_t">Available voices</h3>
-    <div class="tscroll"><table><thead><tr><th data-i="language">Language</th><th data-i="male">Male</th><th data-i="female">Female</th></tr></thead><tbody id="voiceTable"></tbody></table></div>
-  </div>
-  <div class="card">
-    <h3 data-i="faq_t">FAQ</h3>
-    <details><summary data-i="q1">Is it free?</summary><p data-i="a1">Yes. There is no charge to preview or export. Please be fair with long jobs.</p></details>
-    <details><summary data-i="q2">Can I use the audio and videos commercially?</summary><p data-i="a2">Voices come from Microsoft's neural text-to-speech service. Check Microsoft's terms, and make sure you own the rights to any images or clips you upload.</p></details>
-    <details><summary data-i="q3">Is my content stored?</summary><p data-i="a3">Text is sent to the speech service to generate audio. Rendered videos and uploaded backgrounds are deleted automatically after 24 hours.</p></details>
-    <details><summary data-i="q4">How long can a video be?</summary><p data-i="a4">Up to 40 scenes and about 15 minutes. Longer lessons are best split into parts.</p></details>
-    <details><summary data-i="q5">Which scripts can appear on slides?</summary><p data-i="a5">Arabic, Latin, Cyrillic and Greek always work. Other scripts (Chinese, Japanese, Korean, Hindi, Thai…) need the matching system fonts on the server; the narration works for every language either way.</p></details>
-  </div>
+      <li><b data-i="tip1b"></b> <span data-i="tip1"></span></li><li><b data-i="tip2b"></b> <span data-i="tip2"></span></li>
+      <li><b data-i="tip3b"></b> <span data-i="tip3"></span></li><li><b data-i="tip4b"></b> <span data-i="tip4"></span></li>
+    </ul></div>
+  <div class="card"><h3 data-i="voices_t"></h3>
+    <div class="tscroll"><table><thead><tr><th data-i="language">Language</th><th data-i="male">Male</th><th data-i="female">Female</th></tr></thead><tbody id="voiceTable"></tbody></table></div></div>
+  <div class="card"><h3 data-i="faq_t"></h3>
+    <details><summary data-i="q6"></summary><p data-i="a6"></p></details>
+    <details><summary data-i="q1"></summary><p data-i="a1"></p></details><details><summary data-i="q2"></summary><p data-i="a2"></p></details>
+    <details><summary data-i="q3"></summary><p data-i="a3"></p></details><details><summary data-i="q4"></summary><p data-i="a4"></p></details>
+    <details><summary data-i="q5"></summary><p data-i="a5"></p></details></div>
 </section>
 
 <section id="about">
-  <h2 data-i="about_t">About the module</h2>
-  <p class="sub" data-i="about_s">One small module for voice and video.</p>
-  <div class="card">
-    <p style="margin-top:0;color:var(--muted)" data-i="about_p">VoiceForge is a Python package with two parts: tts_module.py (text to MP3 with Microsoft's neural voices via the open-source edge-tts) and video.py (scenes to MP4: slides drawn with Pillow, narration, burned-in captions, ffmpeg). The same code runs as a library, a command-line tool and a web API.</p>
+  <h2 data-i="about_t"></h2><p class="sub" data-i="about_s"></p>
+  <div class="card"><p style="margin-top:0;color:var(--muted)" data-i="about_p"></p>
     <div class="kv">
-      <div data-i="k_engine">Voice engine</div><div>edge-tts · Microsoft neural voices</div>
-      <div data-i="k_video">Video engine</div><div>Pillow (Arabic &amp; RTL shaping) · ffmpeg · H.264 + AAC</div>
-      <div data-i="k_out">Output</div><div>MP3 · MP4 (+ SRT captions)</div>
-      <div data-i="k_formats">Formats</div><div id="kFormats"></div>
-      <div data-i="k_limits">Limits</div><div data-i="k_limits_v">5,000 chars per MP3 · 40 scenes / 15 min per video · images 15 MB · clips 150 MB</div>
-      <div data-i="k_stack">Stack</div><div>Python 3 · Flask · gunicorn · Docker</div>
-    </div>
-  </div>
-  <div class="card">
-    <h3 data-i="api_t">Use it from code</h3>
-    <pre><code># Python — voice
-from tts_module import export_mp3, voice_for
-export_mp3("مرحبا بكم", voice_for("ar-SA", "male"), "hello.mp3")
+      <div data-i="k_engine"></div><div>edge-tts · Microsoft neural voices</div>
+      <div data-i="k_video"></div><div>Pillow (Arabic &amp; RTL shaping) · ffmpeg · H.264 + AAC</div>
+      <div data-i="k_out"></div><div>MP3 · MP4 (+ SRT captions)</div>
+      <div data-i="k_formats"></div><div id="kFormats"></div>
+      <div data-i="k_res"></div><div id="kRes"></div>
+      <div data-i="k_limits"></div><div data-i="k_limits_v"></div>
+      <div data-i="k_stack"></div><div>Python 3 · Flask · gunicorn · Docker</div>
+    </div></div>
+  <div class="card"><h3 data-i="api_t"></h3>
+    <pre><code># Python — voice (any length)
+from tts_module import synthesize_mp3, voice_for
+open("hello.mp3", "wb").write(synthesize_mp3("مرحبا بكم", voice_for("ar-SA", "male")))
 
-# Python — video
+# Python — video, 4K
 import video
-project = video.validate_project({"size": "youtube-1080", "theme": "academy",
+project = video.validate_project({"ratio": "16:9", "resolution": "2160", "theme": "academy",
     "voice": {"lang": "ar-SA", "gender": "female"},
     "scenes": [{"layout": "title", "title": "درس جديد", "narration": "أهلاً بكم في هذا الدرس."}]})
 video.render_project(project, "lesson.mp4", assets=None)
@@ -343,383 +407,24 @@ video.render_project(project, "lesson.mp4", assets=None)
 curl -X POST <span class="origin"></span>/api/export -H "Content-Type: application/json" \
   -d '{"text":"مرحبا","lang":"ar-SA","gender":"female"}' -o speech.mp3</code></pre>
     <div class="kv" style="margin-top:14px">
-      <div><code>GET /api/voices</code></div><div data-i="e1">List languages and voices.</div>
-      <div><code>POST /api/preview · /api/export</code></div><div data-i="e2">MP3 preview / full MP3 from text.</div>
-      <div><code>GET /api/video/config</code></div><div data-i="e5">Video sizes, themes, presets and limits.</div>
-      <div><code>POST /api/video/assets</code></div><div data-i="e6">Upload a background image or clip.</div>
-      <div><code>POST /api/video/preview</code></div><div data-i="e7">PNG preview of one scene.</div>
-      <div><code>POST /api/video/render</code></div><div data-i="e8">Start a render; poll <code>/api/video/jobs/&lt;id&gt;</code>, then download <code>video.mp4</code> / <code>captions.srt</code>.</div>
-    </div>
-  </div>
+      <div><code>GET /api/voices</code></div><div data-i="e1"></div>
+      <div><code>POST /api/preview · /api/export</code></div><div data-i="e2"></div>
+      <div><code>POST /api/tts/jobs</code></div><div data-i="e3"></div>
+      <div><code>GET /api/video/config</code></div><div data-i="e5"></div>
+      <div><code>POST /api/video/assets</code></div><div data-i="e6"></div>
+      <div><code>POST /api/video/preview</code></div><div data-i="e7"></div>
+      <div><code>POST /api/video/render</code></div><div data-i="e8"></div>
+      <div><code>/api/projects…</code></div><div data-i="e9"></div>
+    </div></div>
 </section>
 </main>
-<footer><div class="wrap"><span data-i="foot">VoiceForge · voice and video in Arabic, English and more.</span></div></footer>
+<footer><div class="wrap"><span data-i="foot"></span></div></footer>
 
-<script>
-(() => {
-"use strict";
-const $ = id => document.getElementById(id);
-const I18N = {
- en:{nav_voice:"Voice",nav_video:"Video",nav_guide:"Guide",nav_about:"About",signout:"Sign out",badge:"Natural voices · Video studio · Arabic first",
-  h1a:"Turn text into",h1b:"voice and video",lead:"Natural speech in 75 languages, plus a video studio that turns your lesson into a narrated MP4 — for YouTube, Shorts, Instagram and the classroom.",
-  stat_lang:"languages",stat_voice:"voices",stat_fmt:"video formats",stat_out:"export",tab_voice:"🎙 Text to Speech",tab_video:"🎬 Video Studio",
-  language:"Language",gender:"Voice",male:"Male",female:"Female",voice_name:"Voice name",speed:"Speed",pitch:"Pitch",text:"Text",
-  preview:"▶ Preview",export:"⬇ Export MP3",sample:"Insert sample",play:"▶ Play",pause:"❚❚ Pause",
-  v_start:"1 · Start from a preset",v_start_h:"Pick a ready-made structure, then edit every scene. Each preset sets the format, theme and sample narration in your language.",
-  v_format:"2 · Format & style",v_size:"Screen size",v_theme:"Theme",v_options:"Options",v_captions:"Burn captions into the video",v_draft:"Draft quality (faster, half size)",
-  v_voice:"3 · Narration voice",v_scenes:"4 · Scenes",v_add:"＋ Add scene",v_dup:"Duplicate",v_del:"Delete",v_layout:"Layout",v_title:"Title",
-  v_body:"On-screen text (one bullet per line)",v_narr:"Narration (spoken, also used for captions)",v_bg:"Background",v_dur:"Duration (seconds)",v_dur_h:"Leave empty to follow the narration.",
-  v_trans:"Transition",v_preview:"Slide preview",v_render:"5 · Render & export",v_render_btn:"🎬 Render MP4",v_dl:"⬇ Download MP4",v_srt:"⬇ Captions (.srt)",
-  l_title:"Title",l_bullets:"Title + bullets",l_text:"Title + paragraph",l_quote:"Quote",b_theme:"Theme gradient",b_color:"Solid colour",b_image:"Image",b_video:"Video clip",t_fade:"Fade",t_none:"None (cut)",
-  guide_t:"How to use it",guide_s:"From text to voice, and from lesson to video.",s1t:"Choose a voice",s1d:"Pick a language, then Male or Female, then a voice name.",
-  s2t:"Write your text",s2d:"Type or paste up to 5,000 characters. Arabic runs right-to-left automatically.",s3t:"Preview",s3d:"Hear the first 300 characters and click the waveform to jump around.",
-  s4t:"Export MP3",s4d:"Render the full text and download speech.mp3.",vg_t:"Making a video",
-  vg1b:"Start from a preset.",vg1:"Lesson, YouTube explainer, Short, course intro or quiz — each with sample scenes in your language.",
-  vg2b:"One scene = one idea.",vg2:"Put the on-screen text in “Text” and what you say in “Narration”. Scene length follows the narration.",
-  vg3b:"Pick the screen size for where it will play:",vg3:"16:9 for YouTube, 9:16 for Shorts, TikTok and Reels, 1:1 or 4:5 for Instagram, 4:3 for classrooms.",
-  vg4b:"Add your own images or video",vg4:"as a scene background (PNG, JPG, WEBP, MP4, MOV, WEBM). Uploads are kept for 24 hours.",
-  vg5b:"Draft first.",vg5:"Tick “Draft quality” to check timing quickly, then render the final video.",
-  tips_t:"Tips for better results",tip1b:"Punctuation sets the rhythm.",tip1:"Commas and full stops create natural pauses; use «،» and «.» in Arabic.",
-  tip2b:"Arabic diacritics (تشكيل)",tip2:"help with ambiguous words, e.g. names and rare vocabulary.",tip3b:"Numbers and dates",tip3:"are read in the selected language; write them out if you need a specific reading.",
-  tip4b:"Speed and pitch",tip4:"change delivery. Try −10% speed for clearer teaching.",voices_t:"Available voices",faq_t:"FAQ",
-  q1:"Is it free?",a1:"Yes. There is no charge to preview or export. Please be fair with long jobs.",
-  q2:"Can I use the audio and videos commercially?",a2:"Voices come from Microsoft's neural text-to-speech service. Check Microsoft's terms, and make sure you own the rights to any images or clips you upload.",
-  q3:"Is my content stored?",a3:"Text is sent to the speech service to generate audio. Rendered videos and uploaded backgrounds are deleted automatically after 24 hours.",
-  q4:"How long can a video be?",a4:"Up to 40 scenes and about 15 minutes. Longer lessons are best split into parts.",
-  q5:"Which scripts can appear on slides?",a5:"Arabic, Latin, Cyrillic and Greek always work. Other scripts (Chinese, Japanese, Korean, Hindi, Thai…) need the matching system fonts on the server; the narration works for every language either way.",
-  about_t:"About the module",about_s:"One small module for voice and video.",
-  about_p:"VoiceForge is a Python package with two parts: tts_module.py (text to MP3 with Microsoft's neural voices via the open-source edge-tts) and video.py (scenes to MP4: slides drawn with Pillow, narration, burned-in captions, ffmpeg). The same code runs as a library, a command-line tool and a web API.",
-  k_engine:"Voice engine",k_video:"Video engine",k_out:"Output",k_formats:"Formats",k_limits:"Limits",k_limits_v:"5,000 chars per MP3 · 40 scenes / 15 min per video · images 15 MB · clips 150 MB",k_stack:"Stack",
-  api_t:"Use it from code",e1:"List languages and voices.",e2:"MP3 preview / full MP3 from text.",e5:"Video sizes, themes, presets and limits.",e6:"Upload a background image or clip.",e7:"PNG preview of one scene.",
-  e8:"Start a render; poll /api/video/jobs/<id>, then download video.mp4 / captions.srt.",foot:"VoiceForge · voice and video in Arabic, English and more.",
-  working_prev:"Generating preview…",working_exp:"Rendering MP3…",prev_ok:"Preview ready. Click the waveform to seek.",exp_ok:"Exported",empty:"Type some text first.",
-  login_needed:"Please sign in with Google to continue.",chars:n=>`${n} / 5000 characters`,wave:"Press Preview to draw the waveform",
-  sample_text:{ar:"مرحبا بكم في فوريج. حوّل نصّك إلى صوت طبيعي بضغطة زر.",en:"Welcome to VoiceForge. Turn your text into natural speech in one click."},
-  scene:"Scene",untitled:"Untitled",prev_loading:"updating…",prev_fail:"Preview unavailable: ",upload:"Upload file…",uploading:"Uploading…",uploaded:"Uploaded",
-  colour:"Colour",rendering:"Rendering",queued:"Waiting in queue…",render_done:"Your video is ready.",render_fail:"Render failed: ",est:"Estimated length",
-  need_upload:"Upload a file to see the preview.",auto:"auto",min:"min",loaded_preset:"Preset loaded — edit the scenes below.",narr_chars:n=>`${n} / 3000`,need_scene:"Add at least one scene.",busy:"Working…",sec:"sec",size_info:"MB"},
- ar:{nav_voice:"الصوت",nav_video:"الفيديو",nav_guide:"الدليل",nav_about:"حول الأداة",signout:"تسجيل الخروج",badge:"أصوات طبيعية · استوديو فيديو · العربية أولاً",
-  h1a:"حوّل النص إلى",h1b:"صوت وفيديو",lead:"كلام طبيعي بـ75 لغة، واستوديو فيديو يحوّل درسك إلى ملف MP4 مع تعليق صوتي — ليوتيوب وشورتس وإنستغرام والفصل الدراسي.",
-  stat_lang:"لغة",stat_voice:"صوت",stat_fmt:"صيغ فيديو",stat_out:"تصدير",tab_voice:"🎙 تحويل النص إلى كلام",tab_video:"🎬 استوديو الفيديو",
-  language:"اللغة",gender:"الصوت",male:"رجل",female:"امرأة",voice_name:"اسم الصوت",speed:"السرعة",pitch:"النبرة",text:"النص",
-  preview:"▶ معاينة",export:"⬇ تصدير MP3",sample:"إدراج نص تجريبي",play:"▶ تشغيل",pause:"❚❚ إيقاف مؤقت",
-  v_start:"١ · ابدأ من قالب جاهز",v_start_h:"اختر هيكلاً جاهزاً ثم عدّل كل مشهد. كل قالب يضبط الصيغة والمظهر ويضيف تعليقاً صوتياً تجريبياً بلغتك.",
-  v_format:"٢ · الصيغة والمظهر",v_size:"حجم الشاشة",v_theme:"المظهر",v_options:"خيارات",v_captions:"دمج الترجمة النصية داخل الفيديو",v_draft:"جودة مسوّدة (أسرع وبنصف الحجم)",
-  v_voice:"٣ · صوت التعليق",v_scenes:"٤ · المشاهد",v_add:"＋ إضافة مشهد",v_dup:"تكرار",v_del:"حذف",v_layout:"التخطيط",v_title:"العنوان",
-  v_body:"النص على الشاشة (نقطة في كل سطر)",v_narr:"التعليق الصوتي (يُنطق ويُستخدم للترجمة)",v_bg:"الخلفية",v_dur:"المدة (بالثواني)",v_dur_h:"اتركه فارغاً لاتباع طول التعليق.",
-  v_trans:"الانتقال",v_preview:"معاينة الشريحة",v_render:"٥ · الإنشاء والتصدير",v_render_btn:"🎬 إنشاء MP4",v_dl:"⬇ تنزيل MP4",v_srt:"⬇ الترجمة (.srt)",
-  l_title:"عنوان",l_bullets:"عنوان + نقاط",l_text:"عنوان + فقرة",l_quote:"اقتباس",b_theme:"تدرّج المظهر",b_color:"لون واحد",b_image:"صورة",b_video:"مقطع فيديو",t_fade:"تلاشي",t_none:"بدون (قطع)",
-  guide_t:"طريقة الاستخدام",guide_s:"من النص إلى الصوت، ومن الدرس إلى الفيديو.",s1t:"اختر الصوت",s1d:"اختر اللغة ثم رجل أو امرأة ثم اسم الصوت.",
-  s2t:"اكتب النص",s2d:"اكتب أو الصق حتى 5000 حرف. العربية تُعرض من اليمين لليسار تلقائياً.",s3t:"معاينة",s3d:"استمع لأول 300 حرف وانقر على الموجة للتنقل.",
-  s4t:"تصدير MP3",s4d:"أنشئ الملف الكامل ونزّل speech.mp3.",vg_t:"صناعة فيديو",
-  vg1b:"ابدأ من قالب.",vg1:"درس، شرح ليوتيوب، فيديو قصير، مقدمة دورة أو اختبار — وكلها بمشاهد تجريبية بلغتك.",
-  vg2b:"مشهد واحد = فكرة واحدة.",vg2:"ضع ما يظهر على الشاشة في «النص» وما تقوله في «التعليق». يتبع طول المشهد طول التعليق.",
-  vg3b:"اختر حجم الشاشة حسب مكان العرض:",vg3:"16:9 ليوتيوب، 9:16 لشورتس وتيك توك وريلز، 1:1 أو 4:5 لإنستغرام، 4:3 للفصول الدراسية.",
-  vg4b:"أضف صورك أو فيديوهاتك",vg4:"كخلفية للمشهد (PNG وJPG وWEBP وMP4 وMOV وWEBM). تُحفظ الملفات المرفوعة 24 ساعة.",
-  vg5b:"ابدأ بمسوّدة.",vg5:"فعّل «جودة مسوّدة» لفحص التوقيت بسرعة، ثم أنشئ الفيديو النهائي.",
-  tips_t:"نصائح لنتائج أفضل",tip1b:"علامات الترقيم تضبط الإيقاع.",tip1:"الفواصل والنقاط تصنع وقفات طبيعية؛ استخدم «،» و«.» في العربية.",
-  tip2b:"التشكيل",tip2:"يساعد في الكلمات الملتبسة مثل الأسماء والمفردات النادرة.",tip3b:"الأرقام والتواريخ",tip3:"تُقرأ بلغة الصوت المختار؛ اكتبها بالحروف إذا أردت قراءة محددة.",
-  tip4b:"السرعة والنبرة",tip4:"تغيّران الأداء. جرّب −10% للسرعة لوضوح أكبر في الشرح.",voices_t:"الأصوات المتاحة",faq_t:"الأسئلة الشائعة",
-  q1:"هل الخدمة مجانية؟",a1:"نعم، لا توجد رسوم للمعاينة أو التصدير. يُرجى مراعاة الاستخدام العادل.",
-  q2:"هل يمكنني استخدام الصوت والفيديو تجارياً؟",a2:"الأصوات من خدمة Microsoft للكلام العصبي. راجع شروط Microsoft، وتأكد من امتلاكك حقوق أي صور أو مقاطع ترفعها.",
-  q3:"هل يُخزَّن محتواي؟",a3:"يُرسل النص إلى خدمة الكلام لتوليد الصوت. تُحذف الفيديوهات والخلفيات المرفوعة تلقائياً بعد 24 ساعة.",
-  q4:"ما أقصى طول للفيديو؟",a4:"حتى 40 مشهداً وحوالي 15 دقيقة. الأفضل تقسيم الدروس الأطول إلى أجزاء.",
-  q5:"أي الخطوط تظهر على الشرائح؟",a5:"العربية واللاتينية والسيريلية واليونانية تعمل دائماً. الخطوط الأخرى (الصينية واليابانية والكورية والهندية والتايلندية…) تحتاج خطوط النظام المناسبة على الخادم؛ أما الصوت فيعمل لكل اللغات.",
-  about_t:"حول الأداة",about_s:"وحدة صغيرة واحدة للصوت والفيديو.",
-  about_p:"فوريج حزمة بايثون من جزأين: tts_module.py (تحويل النص إلى MP3 بأصوات Microsoft العصبية عبر edge-tts مفتوحة المصدر) وvideo.py (من المشاهد إلى MP4: شرائح بـPillow وتعليق صوتي وترجمة مدمجة وffmpeg). يعمل الكود نفسه كمكتبة وأداة سطر أوامر وواجهة API.",
-  k_engine:"محرك الصوت",k_video:"محرك الفيديو",k_out:"المخرجات",k_formats:"الصيغ",k_limits:"الحدود",k_limits_v:"5000 حرف لكل MP3 · 40 مشهداً / 15 دقيقة لكل فيديو · الصور 15 ميغابايت · المقاطع 150 ميغابايت",k_stack:"التقنيات",
-  api_t:"استخدمها من الكود",e1:"قائمة اللغات والأصوات.",e2:"معاينة MP3 / ملف MP3 كامل من النص.",e5:"أحجام الفيديو والمظاهر والقوالب والحدود.",e6:"رفع صورة أو مقطع كخلفية.",e7:"معاينة PNG لمشهد واحد.",
-  e8:"ابدأ الإنشاء؛ تابع /api/video/jobs/<id> ثم نزّل video.mp4 / captions.srt.",foot:"فوريج · صوت وفيديو بالعربية والإنجليزية وغيرهما.",
-  working_prev:"جارٍ إنشاء المعاينة…",working_exp:"جارٍ إنشاء ملف MP3…",prev_ok:"المعاينة جاهزة. انقر على الموجة للتنقل.",exp_ok:"تم التصدير",empty:"اكتب نصاً أولاً.",
-  login_needed:"يرجى تسجيل الدخول بحساب Google للمتابعة.",chars:n=>`${n} / 5000 حرف`,wave:"اضغط معاينة لرسم الموجة الصوتية",
-  sample_text:{ar:"مرحبا بكم في فوريج. حوّل نصّك إلى صوت طبيعي بضغطة زر.",en:"Welcome to VoiceForge. Turn your text into natural speech in one click."},
-  scene:"مشهد",untitled:"بدون عنوان",prev_loading:"جارٍ التحديث…",prev_fail:"تعذّرت المعاينة: ",upload:"رفع ملف…",uploading:"جارٍ الرفع…",uploaded:"تم الرفع",
-  colour:"اللون",rendering:"جارٍ الإنشاء",queued:"في قائمة الانتظار…",render_done:"فيديوك جاهز.",render_fail:"فشل الإنشاء: ",est:"الطول التقديري",
-  need_upload:"ارفع ملفاً لمعاينة الشريحة.",auto:"تلقائي",min:"د",loaded_preset:"تم تحميل القالب — عدّل المشاهد أدناه.",narr_chars:n=>`${n} / 3000`,need_scene:"أضف مشهداً واحداً على الأقل.",busy:"جارٍ العمل…",sec:"ث",size_info:"م.ب"}
-};
-let ui="en", catalog={languages:[],voices:[]}, cfg=null, config={};
-const t=k=>I18N[ui][k]??I18N.en[k]??k;
-const isRtlLang=c=>/^(ar|ur|fa|he|ps|sd|ug)/.test(c);
+<div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><b id="mTitle"></b><button class="chip" id="mClose" data-i="close">Close</button></div><div id="mBody"></div></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="uploadInput" multiple hidden>
 
-function applyUI(lang){
-  ui=lang; document.documentElement.lang=lang; document.documentElement.dir=lang==="ar"?"rtl":"ltr";
-  document.querySelectorAll("[data-i]").forEach(el=>{const v=I18N[lang][el.dataset.i]; if(typeof v==="string") el.textContent=v});
-  $("langBtn").textContent=lang==="ar"?"English":"العربية"; $("sDur").placeholder=t("auto");
-  els.count.textContent=t("chars")(els.text.value.length);
-  if(vstate.status) setVStatus(t(vstate.status.key),vstate.status.cls);
-  if(statusKey) setStatus(t(statusKey), statusKey==="prev_ok"?"ok":"");
-  draw(progress()); if(cfg){renderPresetCards();renderSizes();renderThemes();renderSceneList();updateEstimate()}
-}
-
-/* ================= shared voice picker ================= */
-function familyOf(label){return label.split(" (")[0]}
-function regionOf(label){const m=label.match(/\((.*)\)/);return m?m[1]:label}
-function fillLanguages(sel,selected){
-  sel.innerHTML=""; const groups={};
-  catalog.languages.forEach(l=>{(groups[familyOf(l.label)]??=[]).push(l)});
-  Object.entries(groups).forEach(([fam,list])=>{
-    const parent=list.length>1?Object.assign(document.createElement("optgroup"),{label:fam}):sel;
-    list.forEach(l=>{const o=document.createElement("option");o.value=l.code;o.textContent=list.length>1?regionOf(l.label):l.label;parent.appendChild(o)});
-    if(parent!==sel) sel.appendChild(parent);
-  });
-  sel.value=selected;
-}
-function fillVoices(sel,lang,gender,selected){
-  const list=catalog.voices.filter(v=>v.language===lang&&v.gender===gender);
-  const fallback=list.length?list:catalog.voices.filter(v=>v.language===lang);
-  sel.innerHTML=""; fallback.forEach(v=>{const o=document.createElement("option");o.value=v.id;o.textContent=`${v.name}${list.length?"":" ("+v.gender+")"}`;sel.appendChild(o)});
-  if(selected&&fallback.some(v=>v.id===selected)) sel.value=selected;
-  return fallback;
-}
-function genderBtns(root,onPick){
-  root.querySelectorAll("button").forEach(b=>b.onclick=()=>{root.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));onPick(b.dataset.g)});
-}
-function setGenderUI(root,g){root.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x.dataset.g===g))}
-
-/* ================= VOICE TAB ================= */
-const els={language:$("language"),voice:$("voice"),text:$("text"),rate:$("rate"),pitch:$("pitch"),rateVal:$("rateVal"),pitchVal:$("pitchVal"),
- preview:$("previewBtn"),exp:$("exportBtn"),play:$("playBtn"),status:$("status"),count:$("count"),time:$("time"),audio:$("audio"),wave:$("wave")};
-let gender="female", peaks=null, url=null, busy=false, statusKey=null;
-function setStatus(msg,cls=""){els.status.textContent=msg;els.status.className="status "+cls}
-function refreshVoice(){fillVoices(els.voice,els.language.value,gender,els.voice.value)}
-function draw(p=0){
-  const c=els.wave,dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight; if(!w) return;
-  if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
-  const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
-  if(!peaks){g.fillStyle="#6b7490";g.font="14px system-ui";g.textAlign="center";g.fillText(t("wave"),w/2,h/2+5);return}
-  const n=peaks.length,bar=w/n,mid=h/2,px=p*w,grad=g.createLinearGradient(0,0,w,0);grad.addColorStop(0,"#7c5cff");grad.addColorStop(1,"#3ea6ff");
-  for(let i=0;i<n;i++){const x=i*bar,a=Math.max(1,peaks[i]*h*.46);g.fillStyle=x<px?grad:"rgba(255,255,255,.22)";g.fillRect(x,mid-a,Math.max(1,bar*.7),a*2)}
-  g.fillStyle="#fff";g.fillRect(px,0,1.5,h);
-}
-const progress=()=>{const d=els.audio.duration;return isFinite(d)&&d>0?els.audio.currentTime/d:0};
-const fmt=s=>isFinite(s)?`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`:"0:00";
-els.audio.ontimeupdate=()=>{els.time.textContent=`${fmt(els.audio.currentTime)} / ${fmt(els.audio.duration)}`;draw(progress())};
-els.audio.onplay=()=>els.play.textContent=t("pause"); els.audio.onpause=els.audio.onended=()=>els.play.textContent=t("play");
-els.play.onclick=()=>{if(els.audio.src) els.audio.paused?els.audio.play():els.audio.pause()};
-els.wave.onclick=e=>{if(!els.audio.duration)return;const r=els.wave.getBoundingClientRect();els.audio.currentTime=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*els.audio.duration;draw(progress())};
-addEventListener("resize",()=>draw(progress()));
-async function computePeaks(buf,bins=900){
-  const ctx=new (window.AudioContext||window.webkitAudioContext)();
-  try{const a=await ctx.decodeAudioData(buf),d=a.getChannelData(0),step=Math.max(1,Math.floor(d.length/bins)),out=new Float32Array(bins);
-    for(let i=0;i<bins;i++){let m=0;for(let j=i*step,e=Math.min(d.length,j+step);j<e;j++){const v=Math.abs(d[j]);if(v>m)m=v}out[i]=m}return out}
-  finally{ctx.close()}
-}
-const payload=()=>({text:els.text.value,voice:els.voice.value,rate:+els.rate.value,pitch:+els.pitch.value});
-function setBusy(b){busy=b;els.preview.disabled=els.exp.disabled=b}
-async function errOf(res){let d={};try{d=await res.json()}catch{} return d.login_required?t("login_needed"):(d.error||`Request failed (${res.status})`)}
-async function post(path){
-  if(!els.text.value.trim()) throw new Error(t("empty"));
-  const res=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload())});
-  if(!res.ok) throw new Error(await errOf(res)); return res.blob();
-}
-els.preview.onclick=async()=>{
-  if(busy)return; setBusy(true); statusKey="working_prev"; setStatus(t(statusKey));
-  try{const blob=await post("/api/preview"); peaks=await computePeaks(await blob.arrayBuffer());
-    if(url)URL.revokeObjectURL(url); url=URL.createObjectURL(blob); els.audio.src=url; els.play.disabled=false; draw(0);
-    statusKey="prev_ok"; setStatus(t(statusKey),"ok"); els.audio.play().catch(()=>{});
-  }catch(e){statusKey=null;setStatus(e.message,"err")}finally{setBusy(false)}
-};
-els.exp.onclick=async()=>{
-  if(busy)return; setBusy(true); statusKey="working_exp"; setStatus(t(statusKey));
-  try{const blob=await post("/api/export"),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`speech-${els.language.value}-${gender}.mp3`;
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
-    statusKey=null;setStatus(`${t("exp_ok")} · ${(blob.size/1024).toFixed(0)} KB`,"ok");
-  }catch(e){statusKey=null;setStatus(e.message,"err")}finally{setBusy(false)}
-};
-$("sampleBtn").onclick=()=>{els.text.value=I18N[ui].sample_text[isRtlLang(els.language.value)?"ar":"en"];els.count.textContent=t("chars")(els.text.value.length)};
-genderBtns($("gender"),g=>{gender=g;refreshVoice()});
-els.language.onchange=refreshVoice;
-els.rate.oninput=()=>els.rateVal.textContent=`${+els.rate.value>0?"+":""}${els.rate.value}%`;
-els.pitch.oninput=()=>els.pitchVal.textContent=`${+els.pitch.value>0?"+":""}${els.pitch.value} Hz`;
-els.text.oninput=()=>els.count.textContent=t("chars")(els.text.value.length);
-
-/* ================= VIDEO TAB ================= */
-const vstate={status:null,sel:0,project:null,job:null,timer:null,prevTimer:null,prevUrl:null,prevSeq:0};
-const newScene=(o={})=>({layout:"title",title:"",body:"",narration:"",background:{type:"theme",color:"#1d4e9e",asset:null,assetName:""},duration:null,transition:"fade",...o});
-function defaultProject(){return{size:"youtube-1080",theme:"academy",captions:true,quality:"final",voice:{lang:"ar-SA",gender:"female",voice:"",rate:0,pitch:0},scenes:[newScene({title:"",body:"",narration:""})]}}
-function saveDraft(){try{localStorage.setItem("vf-video",JSON.stringify(vstate.project))}catch{}}
-function loadDraft(){try{const d=JSON.parse(localStorage.getItem("vf-video")||"null");if(d&&Array.isArray(d.scenes)&&d.scenes.length&&d.size&&d.theme)return d}catch{}return null}
-function setVStatus(msg,cls=""){const e=$("vStatus");e.textContent=msg;e.className="status "+cls}
-function setVKey(key,cls=""){vstate.status={key,cls};setVStatus(t(key),cls)}
-const sceneAt=()=>vstate.project.scenes[vstate.sel];
-
-function renderPresetCards(){
-  const box=$("presetCards"); box.innerHTML="";
-  cfg.presets.forEach(p=>{const b=document.createElement("button");b.className="pcard";b.innerHTML=`<b></b><span></span>`;
-    b.firstChild.textContent=p.label[ui];b.lastChild.textContent=p.desc[ui];b.onclick=()=>applyPreset(p.id);box.appendChild(b)});
-  const blank=document.createElement("button");blank.className="pcard";blank.innerHTML="<b></b><span></span>";
-  blank.firstChild.textContent=ui==="ar"?"مشروع فارغ":"Blank project";blank.lastChild.textContent=ui==="ar"?"ابدأ من الصفر بمشهد واحد.":"Start from scratch with one scene.";
-  blank.onclick=()=>{const p=defaultProject();p.voice=vstate.project.voice;p.size=vstate.project.size;p.theme=vstate.project.theme;vstate.project=p;vstate.sel=0;refreshVideoUI();saveDraft()};
-  box.appendChild(blank);
-}
-function applyPreset(id){
-  const p=cfg.presets.find(x=>x.id===id); if(!p) return;
-  const arabic=ui==="ar";
-  vstate.project.size=p.size; vstate.project.theme=p.theme;
-  vstate.project.scenes=p.scenes[ui].map(s=>newScene(s));
-  const v=vstate.project.voice;
-  if(arabic&&!isRtlLang(v.lang)){v.lang="ar-SA";v.voice=""} else if(!arabic&&isRtlLang(v.lang)){v.lang="en-US";v.voice=""}
-  vstate.sel=0; refreshVideoUI(); saveDraft(); setVKey("loaded_preset","ok");
-}
-function renderSizes(){
-  const box=$("sizeCards"); box.innerHTML="";
-  cfg.sizes.forEach(s=>{const b=document.createElement("button");b.className="pcard size"+(vstate.project.size===s.id?" on":"");
-    const k=26/Math.max(s.w,s.h);const w=Math.round(s.w*k*1.4),h=Math.round(s.h*k*1.4);
-    b.innerHTML=`<div class="ar" style="width:${w}px;height:${h}px"></div><div><b></b><span></span></div>`;
-    b.querySelector("b").textContent=s.label;b.querySelector("span").textContent=`${s.ratio} · ${s.w}×${s.h}`;
-    b.onclick=()=>{vstate.project.size=s.id;renderSizes();saveDraft();schedulePreview()};box.appendChild(b)});
-}
-function renderThemes(){
-  const box=$("themeSw"); box.innerHTML="";
-  cfg.themes.forEach(th=>{const b=document.createElement("button");b.className="sw"+(vstate.project.theme===th.id?" on":"");
-    b.innerHTML=`<i style="background:linear-gradient(135deg,${th.bg[0]},${th.bg[1]})"></i><span></span>`;b.querySelector("span").textContent=th.label;
-    b.onclick=()=>{vstate.project.theme=th.id;renderThemes();saveDraft();schedulePreview()};box.appendChild(b)});
-}
-function renderSceneList(){
-  const box=$("sceneList"); box.innerHTML="";
-  vstate.project.scenes.forEach((s,i)=>{const b=document.createElement("button");b.className="sitem"+(i===vstate.sel?" on":"");
-    b.innerHTML="<em></em><span></span>";b.firstChild.textContent=i+1;
-    b.lastChild.textContent=s.title||s.body.split("\n")[0]||s.narration.slice(0,40)||t("untitled");
-    b.onclick=()=>{vstate.sel=i;renderSceneList();loadSceneFields();schedulePreview()};box.appendChild(b)});
-  updateEstimate();
-}
-function loadSceneFields(){
-  const s=sceneAt(); $("sceneTitleHead").textContent=`${t("scene")} ${vstate.sel+1}`;
-  $("sLayout").value=s.layout;$("sTitle").value=s.title;$("sBody").value=s.body;$("sNarr").value=s.narration;
-  $("sBgType").value=s.background.type;$("sDur").value=s.duration??"";$("sTrans").value=s.transition;
-  $("narrCount").textContent=t("narr_chars")(s.narration.length); renderBgExtra();
-  $("sUp").disabled=vstate.sel===0;$("sDown").disabled=vstate.sel===vstate.project.scenes.length-1;$("sDel").disabled=vstate.project.scenes.length===1;
-}
-function renderBgExtra(){
-  const s=sceneAt(), box=$("bgExtra"), type=s.background.type; box.innerHTML="";
-  if(type==="color"){box.innerHTML=`<label>${t("colour")}</label><input type="color" id="bgColor" style="width:100%;height:42px;border-radius:10px;border:1px solid var(--line);background:none">`;
-    $("bgColor").value=s.background.color||"#1d4e9e";$("bgColor").oninput=e=>{s.background.color=e.target.value;saveDraft();schedulePreview()}}
-  else if(type==="image"||type==="video"){
-    box.innerHTML=`<label>${type==="image"?t("b_image"):t("b_video")}</label><label class="btn" style="text-transform:none;letter-spacing:0;margin:0;display:block;text-align:center"><span id="upLbl"></span><input type="file" id="bgFile" hidden accept="${type==="image"?"image/png,image/jpeg,image/webp":"video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"}"></label><span class="hint" id="upHint"></span>`;
-    $("upLbl").textContent=t("upload"); $("upHint").textContent=s.background.assetName||"";
-    $("bgFile").onchange=e=>uploadBg(e.target.files[0],type);
-  }
-}
-async function uploadBg(file,type){
-  if(!file) return; const s=sceneAt(); $("upLbl").textContent=t("uploading");
-  const fd=new FormData(); fd.append("file",file);
-  try{const res=await fetch("/api/video/assets",{method:"POST",body:fd}); if(!res.ok) throw new Error(await errOf(res));
-    const d=await res.json(); s.background.asset=d.id; s.background.assetName=file.name; s.background.type=d.kind; $("sBgType").value=d.kind;
-    renderBgExtra(); saveDraft(); schedulePreview(); setVKey("uploaded","ok");
-  }catch(e){vstate.status=null;setVStatus(e.message,"err"); renderBgExtra()}
-}
-function bindField(id,fn){$(id).addEventListener("input",e=>{fn(sceneAt(),e.target.value);saveDraft();schedulePreview();if(id==="sTitle"||id==="sBody"||id==="sNarr")renderSceneListLight()})}
-function renderSceneListLight(){const b=$("sceneList").children[vstate.sel];if(b){const s=sceneAt();b.lastChild.textContent=s.title||s.body.split("\n")[0]||s.narration.slice(0,40)||t("untitled")}updateEstimate()}
-bindField("sTitle",(s,v)=>s.title=v); bindField("sBody",(s,v)=>s.body=v);
-bindField("sNarr",(s,v)=>{s.narration=v;$("narrCount").textContent=t("narr_chars")(v.length)});
-$("sLayout").onchange=e=>{sceneAt().layout=e.target.value;saveDraft();schedulePreview()};
-$("sTrans").onchange=e=>{sceneAt().transition=e.target.value;saveDraft()};
-$("sDur").oninput=e=>{const v=parseFloat(e.target.value);sceneAt().duration=isFinite(v)&&v>0?v:null;saveDraft();updateEstimate()};
-$("sBgType").onchange=e=>{const s=sceneAt();s.background.type=e.target.value;if(!["image","video"].includes(s.background.type)){} renderBgExtra();saveDraft();schedulePreview()};
-$("addScene").onclick=()=>{vstate.project.scenes.push(newScene());vstate.sel=vstate.project.scenes.length-1;refreshVideoUI();saveDraft()};
-$("sDup").onclick=()=>{const c=JSON.parse(JSON.stringify(sceneAt()));vstate.project.scenes.splice(vstate.sel+1,0,c);vstate.sel++;refreshVideoUI();saveDraft()};
-$("sDel").onclick=()=>{vstate.project.scenes.splice(vstate.sel,1);vstate.sel=Math.max(0,vstate.sel-1);refreshVideoUI();saveDraft()};
-$("sUp").onclick=()=>moveScene(-1); $("sDown").onclick=()=>moveScene(1);
-function moveScene(d){const a=vstate.project.scenes,i=vstate.sel,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];vstate.sel=j;refreshVideoUI();saveDraft()}
-$("vCaptions").onchange=e=>{vstate.project.captions=e.target.checked;saveDraft();schedulePreview()};
-$("vDraft").onchange=e=>{vstate.project.quality=e.target.checked?"draft":"final";saveDraft()};
-
-/* narration voice */
-const vv=()=>vstate.project.voice;
-function refreshVVoice(){const list=fillVoices($("vVoice"),vv().lang,vv().gender,vv().voice);vv().voice=$("vVoice").value||(list[0]&&list[0].id)||""}
-$("vLanguage").onchange=e=>{vv().lang=e.target.value;vv().voice="";refreshVVoice();saveDraft()};
-$("vVoice").onchange=e=>{vv().voice=e.target.value;saveDraft()};
-genderBtns($("vGender"),g=>{vv().gender=g;vv().voice="";refreshVVoice();saveDraft()});
-$("vRate").oninput=e=>{vv().rate=+e.target.value;$("vRateVal").textContent=`${vv().rate>0?"+":""}${vv().rate}%`;saveDraft()};
-$("vPitch").oninput=e=>{vv().pitch=+e.target.value;$("vPitchVal").textContent=`${vv().pitch>0?"+":""}${vv().pitch} Hz`;saveDraft()};
-
-function refreshVideoUI(){
-  const p=vstate.project; if(vstate.sel>=p.scenes.length) vstate.sel=p.scenes.length-1;
-  renderPresetCards();renderSizes();renderThemes();renderSceneList();loadSceneFields();
-  $("vCaptions").checked=p.captions;$("vDraft").checked=p.quality==="draft";
-  fillLanguages($("vLanguage"),p.voice.lang); setGenderUI($("vGender"),p.voice.gender); refreshVVoice();
-  $("vRate").value=p.voice.rate;$("vPitch").value=p.voice.pitch;
-  $("vRateVal").textContent=`${p.voice.rate>0?"+":""}${p.voice.rate}%`;$("vPitchVal").textContent=`${p.voice.pitch>0?"+":""}${p.voice.pitch} Hz`;
-  schedulePreview();
-}
-function projectPayload(){
-  const p=vstate.project;
-  return{size:p.size,theme:p.theme,captions:p.captions,quality:p.quality,voice:{voice:p.voice.voice||null,lang:p.voice.lang,gender:p.voice.gender,rate:p.voice.rate,pitch:p.voice.pitch},
-    scenes:p.scenes.map(s=>({layout:s.layout,title:s.title,body:s.body,narration:s.narration,
-      background:{type:s.background.type,color:s.background.color,asset:s.background.asset},duration:s.duration,transition:s.transition}))};
-}
-function schedulePreview(){clearTimeout(vstate.prevTimer);vstate.prevTimer=setTimeout(refreshPreview,600)}
-async function refreshPreview(){
-  if(!$("viewVideo").classList.contains("on")||!cfg) return;
-  const sc=sceneAt();
-  if(["image","video"].includes(sc.background.type)&&!sc.background.asset){$("prevNote").textContent=t("need_upload");return}
-  const seq=++vstate.prevSeq; $("prevNote").textContent=t("prev_loading");
-  try{const res=await fetch("/api/video/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:projectPayload(),index:vstate.sel})});
-    if(!res.ok) throw new Error(await errOf(res)); const blob=await res.blob(); if(seq!==vstate.prevSeq) return;
-    if(vstate.prevUrl) URL.revokeObjectURL(vstate.prevUrl); vstate.prevUrl=URL.createObjectURL(blob); $("scenePreview").src=vstate.prevUrl; $("prevNote").textContent="";
-  }catch(e){if(seq===vstate.prevSeq)$("prevNote").textContent=t("prev_fail")+e.message}
-}
-function estimateSeconds(){return vstate.project.scenes.reduce((a,s)=>a+(s.duration||(s.narration?Math.max(2,s.narration.length/14+.5):5)),0)}
-function updateEstimate(){const sec=Math.round(estimateSeconds());$("estimate").textContent=`${t("est")}: ~${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`}
-
-$("renderBtn").onclick=async()=>{
-  const btn=$("renderBtn"); btn.disabled=true; $("result").style.display="none"; clearInterval(vstate.timer);
-  $("bar").style.display="block"; $("barFill").style.width="2%"; setVKey("queued");
-  try{const res=await fetch("/api/video/render",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:projectPayload()})});
-    if(!res.ok) throw new Error(await errOf(res)); const {job_id}=await res.json(); vstate.job=job_id;
-    vstate.timer=setInterval(()=>pollJob(job_id),1000); pollJob(job_id);
-  }catch(e){vstate.status=null;setVStatus(t("render_fail")+e.message,"err");$("bar").style.display="none";btn.disabled=false}
-};
-async function pollJob(id){
-  try{const res=await fetch(`/api/video/jobs/${id}`); if(!res.ok) throw new Error(await errOf(res)); const j=await res.json();
-    $("barFill").style.width=Math.max(3,Math.round(j.progress*100))+"%";
-    if(j.status==="queued") setVKey("queued"); else if(j.status==="running"){vstate.status=null;setVStatus(`${t("rendering")}… ${Math.round(j.progress*100)}% (${j.message})`)}
-    if(j.status==="done"){clearInterval(vstate.timer);$("renderBtn").disabled=false;$("barFill").style.width="100%";setVKey("render_done","ok");
-      const base=`/api/video/jobs/${id}/video.mp4`;$("outVideo").src=base;$("dlMp4").href=base+"?download=1";$("dlSrt").href=`/api/video/jobs/${id}/captions.srt`;
-      $("resInfo").textContent=`${Math.floor(j.duration/60)}:${String(Math.round(j.duration%60)).padStart(2,"0")}`;$("result").style.display="block";$("result").scrollIntoView({behavior:"smooth",block:"nearest"})}
-    if(j.status==="error"){clearInterval(vstate.timer);$("renderBtn").disabled=false;$("bar").style.display="none";vstate.status=null;setVStatus(t("render_fail")+j.error,"err")}
-  }catch(e){clearInterval(vstate.timer);$("renderBtn").disabled=false;vstate.status=null;setVStatus(t("render_fail")+e.message,"err")}
-}
-
-/* ================= tabs + auth + init ================= */
-function showView(v){
-  const video=v==="video"; $("viewVoice").classList.toggle("on",!video);$("viewVideo").classList.toggle("on",video);
-  $("tabVoice").classList.toggle("on",!video);$("tabVideo").classList.toggle("on",video);
-  if(video){refreshPreview()} else draw(progress());
-  try{history.replaceState(null,"",video?"#video":"#voice")}catch{}
-}
-$("tabVoice").onclick=()=>showView("voice"); $("tabVideo").onclick=()=>showView("video");
-document.querySelectorAll("[data-go]").forEach(a=>a.addEventListener("click",()=>showView(a.dataset.go)));
-
-async function initAuth(){
-  const me=await (await fetch("/api/me")).json().catch(()=>({})); showUser(me.user);
-  if(!config.google_client_id) return;
-  const s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true;
-  s.onload=()=>{google.accounts.id.initialize({client_id:config.google_client_id,callback:async r=>{
-      const res=await fetch("/api/auth/google",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({credential:r.credential})});
-      const data=await res.json(); if(res.ok){showUser(data.user);setStatus("","")}else setStatus(data.error,"err")}});
-    google.accounts.id.renderButton($("gsi"),{theme:"filled_black",size:"medium",shape:"pill",text:"signin_with"})};
-  document.head.appendChild(s);
-}
-function showUser(u){$("user").style.display=u?"flex":"none";$("gsi").style.display=u?"none":"block";
-  if(u){$("uname").textContent=u.name;if(u.picture)$("uimg").src=u.picture;else $("uimg").style.display="none"}}
-$("signout").onclick=async()=>{await fetch("/api/auth/logout",{method:"POST"});showUser(null)};
-$("langBtn").onclick=()=>applyUI(ui==="en"?"ar":"en");
-
-async function init(){
-  [catalog,cfg,config]=await Promise.all([fetch("/api/voices").then(r=>r.json()),fetch("/api/video/config").then(r=>r.json()),fetch("/api/config").then(r=>r.json()).catch(()=>({}))]);
-  const fam=new Set(catalog.languages.map(l=>l.code.split("-")[0]));
-  $("sLang").textContent=fam.size;$("sVoice").textContent=catalog.voices.length;$("sFmt").textContent=cfg.sizes.length;
-  $("kFormats").textContent=cfg.sizes.map(s=>`${s.ratio} ${s.w}×${s.h}`).join(" · ");
-  document.querySelectorAll(".origin").forEach(e=>e.textContent=location.origin);
-  fillLanguages(els.language,"ar-SA"); refreshVoice(); els.text.value=I18N.en.sample_text.ar;
-  const rows={}; catalog.voices.forEach(v=>{(rows[v.language]??={label:v.label,male:[],female:[]})[v.gender].push(v.name)});
-  $("voiceTable").innerHTML=Object.values(rows).map(r=>`<tr><td>${r.label}</td><td>${r.male.join(", ")||"—"}</td><td>${r.female.join(", ")||"—"}</td></tr>`).join("");
-  vstate.project=loadDraft()||defaultProject(); refreshVideoUI();
-  applyUI("en"); initAuth(); showView(location.hash==="#video"?"video":"voice");
-}
-init().catch(e=>{setStatus("Could not load: "+e.message,"err")});
-})();
-</script>
+<script src="/static/i18n.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ PRESETS = {
         "label": {"en": "Educational lesson", "ar": "درس تعليمي"},
         "desc": {"en": "Title, objectives, concept, example, summary. YouTube 16:9.",
                  "ar": "عنوان، أهداف، مفهوم، مثال، ملخص. يوتيوب 16:9."},
-        "size": "youtube-1080", "theme": "academy",
+        "ratio": "16:9", "resolution": "1080", "theme": "academy",
         "scenes": {
             "en": [
                 _s("title", "Lesson title", "A clear, friendly introduction", "Welcome! In this lesson we will learn the key ideas step by step."),
@@ -35,7 +35,7 @@ PRESETS = {
         "label": {"en": "YouTube explainer", "ar": "فيديو شرح لليوتيوب"},
         "desc": {"en": "Hook, problem, three points, call to action. 16:9.",
                  "ar": "جملة جذب، مشكلة، ثلاث نقاط، دعوة لاتخاذ إجراء. 16:9."},
-        "size": "youtube-1080", "theme": "midnight",
+        "ratio": "16:9", "resolution": "1080", "theme": "midnight",
         "scenes": {
             "en": [
                 _s("title", "Did you know?", "One idea that changes everything", "Did you know there is one simple idea that changes everything? Stay with me."),
@@ -57,7 +57,7 @@ PRESETS = {
         "label": {"en": "Short · Reel · TikTok", "ar": "فيديو قصير · ريلز · تيك توك"},
         "desc": {"en": "Fast hook, three tips, follow. Vertical 9:16.",
                  "ar": "جملة جذب سريعة، ثلاث نصائح، متابعة. عمودي 9:16."},
-        "size": "shorts", "theme": "bold",
+        "ratio": "9:16", "resolution": "1080", "theme": "bold",
         "scenes": {
             "en": [
                 _s("title", "3 tips you need", "Watch until the end", "Three quick tips you need to know. Watch until the end."),
@@ -79,7 +79,7 @@ PRESETS = {
         "label": {"en": "Course intro · Presentation", "ar": "مقدمة دورة · عرض تقديمي"},
         "desc": {"en": "Welcome, agenda, instructor, next steps. Classroom 4:3.",
                  "ar": "ترحيب، جدول، المدرّب، الخطوات التالية. فصل دراسي 4:3."},
-        "size": "classroom", "theme": "clean",
+        "ratio": "4:3", "resolution": "1080", "theme": "clean",
         "scenes": {
             "en": [
                 _s("title", "Course name", "Welcome to the course", "Welcome to the course. I am glad you are here."),
@@ -99,7 +99,7 @@ PRESETS = {
         "label": {"en": "Quiz · Recap", "ar": "اختبار · مراجعة"},
         "desc": {"en": "Question, options, answer. Square 1:1 for social feeds.",
                  "ar": "سؤال، خيارات، إجابة. مربّع 1:1 للشبكات الاجتماعية."},
-        "size": "square", "theme": "chalkboard",
+        "ratio": "1:1", "resolution": "1080", "theme": "chalkboard",
         "scenes": {
             "en": [
                 _s("title", "Quick quiz", "Can you answer this?", "Time for a quick quiz. Can you answer this?"),

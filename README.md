@@ -3,7 +3,9 @@
 Natural text-to-speech in **75 languages (Arabic first)** plus a **video studio** that turns scenes into a narrated MP4 with burned-in captions. One small Python package: a library, a CLI and a web app.
 
 - **Voice** — 322 Microsoft neural voices (male/female) via [`edge-tts`](https://github.com/rany2/edge-tts). Preview with a waveform, export MP3.
-- **Video** — scenes → slides (Pillow, correct Arabic/RTL shaping) + narration + captions → H.264/AAC MP4 (ffmpeg). Presets for **YouTube 16:9**, **Shorts/TikTok/Reels 9:16**, **Instagram 1:1 and 4:5**, **classroom 4:3**; five content presets (lesson, explainer, short, course intro, quiz) in English and Arabic; upload images or clips as backgrounds; SRT export.
+- **Video** — scenes → slides (Pillow, correct Arabic/RTL shaping) + narration + captions → H.264/AAC MP4 (ffmpeg). Six aspect ratios (**16:9, 9:16, 1:1, 4:5, 4:3, 21:9**) × five resolutions (**480p, 720p HD, 1080p Full HD, 1440p 2K, 2160p 4K**); five content presets (lesson, explainer, short, course intro, quiz) in English and Arabic; insert images, videos and background music; SRT export.
+- **Translator** — translate pasted text into any supported language (Microsoft Edge translator, Google as fallback; no key), the voice switches automatically, with Undo.
+- **Projects** — save, open, duplicate, delete, "new project", autosave, and export/import a project as a zip bundle (with its media).
 - **UI** in English and Arabic (RTL), optional **Sign in with Google**.
 
 ## Run it
@@ -36,6 +38,7 @@ The server needs outbound HTTPS access to Microsoft's speech service. `imageio-f
 | `COOKIE_SECURE=1` | Set when serving over HTTPS |
 | `ALLOWED_ORIGIN` | CORS origin for the API (default `*`) |
 | `VF_FONT_DIR` | Extra fonts for slides (see below) |
+| `VF_MAX_TEXT_CHARS` | Max characters per MP3 (default `100000`; `0` = unlimited). Long texts are chunked and run as background jobs |
 
 ## Library and CLI
 
@@ -68,7 +71,11 @@ python tts_module.py "Hello" --voice en-US-JennyNeural --out hello.mp3
 | `POST /api/video/preview` | PNG preview of one scene: `{project, index}` |
 | `POST /api/video/render` | Start a render → `{job_id}`; poll `GET /api/video/jobs/<id>`; download `…/video.mp4` and `…/captions.srt` |
 
-Scene layouts: `title`, `bullets`, `text`, `quote`. Backgrounds: theme gradient, solid colour, image, video. Limits: 40 scenes / ~15 min per video, 5,000 characters per MP3, images 15 MB, clips 150 MB.
+Scene layouts: `title`, `bullets`, `text`, `quote`, `media`. Limits (env-tunable in `video.py`): 60 scenes, 25 MB images, 300 MB clips, 60 MB audio, 800 MB storage per user; max duration shrinks as resolution grows (4K is slow and CPU-heavy).
+
+## Languages not working?
+
+The voice must match the language of the text. Arabic text with a French voice, for example, returns no audio. The Voice tab warns about a mismatch and offers to switch. Three voices Microsoft no longer serves are excluded. Slide text in Hindi, Thai, Chinese etc. needs a matching font (`scripts/get_fonts.sh`, or the Docker image).
 
 ## Fonts for slides
 

@@ -98,7 +98,7 @@ def test_unknown_voice_rejected(fake_service):
 
 def test_too_long_text_rejected(fake_service):
     with pytest.raises(tts.TTSError):
-        tts.synthesize_mp3("a" * (tts.MAX_TEXT_CHARS + 1), "en-US-JennyNeural")
+        tts.synthesize_mp3("a" * (tts.max_text_chars() + 1), "en-US-JennyNeural")
 
 
 @pytest.mark.parametrize("rate,pitch", [(-51, 0), (101, 0), (0, -51), (0, 51)])
@@ -295,3 +295,177 @@ def test_require_login_gate(client, monkeypatch, fake_service):
     with client.session_transaction() as s:
         s["user"] = {"name": "Ada", "email": "a@b.com"}
     assert client.post("/api/export", json={"text": "hi", "lang": "en-US", "gender": "male"}).status_code == 200
+
+
+
+# ---------------------------------------------------------------- long text
+
+def test_split_text_keeps_sentences_whole_and_respects_the_limit():
+    text = " ".join(f"This is sentence number {i}." for i in range(300))
+    chunks = tts.split_text(text, 500)
+    assert all(len(c) <= 500 for c in chunks) and len(chunks) > 10
+    assert all(c.endswith(".") for c in chunks)                      # never cut mid-sentence
+    assert " ".join(chunks).replace("  ", " ") == text
+    assert tts.split_text("short") == ["short"] and tts.split_text("   ") == []
+
+
+def test_split_text_handles_one_endless_sentence_and_arabic():
+    assert all(len(c) <= 300 for c in tts.split_text("word " * 1000, 300))
+    assert all(len(c) <= 300 for c in tts.split_text("x" * 2000, 300))
+    chunks = tts.split_text("جملة عربية قصيرة؟ " * 200, 400)
+    assert len(chunks) > 5 and all(len(c) <= 400 for c in chunks)
+
+
+def test_long_text_is_synthesized_in_pieces_and_joined(fake_service):
+    calls = []
+    orig = fake_service.__init__
+
+    def spy(self, text, voice, rate, pitch):
+        calls.append(text)
+        orig(self, text, voice, rate, pitch)
+
+    fake_service.__init__ = spy
+    text = " ".join(f"Sentence {i} is here." for i in range(1500))       # ~30,000 characters, way over the old 5,000 limit
+    progress = []
+    data = tts.synthesize_mp3(text, "en-US-JennyNeural", progress=progress.append)
+    assert len(calls) > 8 and all(len(c) <= tts.CHUNK_CHARS for c in calls)
+    assert data == fake_service.payload * len(calls)                  # one MP3 piece per chunk, in order
+    assert progress[-1] == 1.0 and progress == sorted(progress)
+
+
+def test_the_text_limit_is_configurable(fake_service, monkeypatch):
+    monkeypatch.setenv("VF_MAX_TEXT_CHARS", "50")
+    assert tts.max_text_chars() == 50
+    with pytest.raises(tts.TTSError) as e:
+        tts.synthesize_mp3("a" * 51, "en-US-JennyNeural")
+    assert "limit is 50" in str(e.value)
+    monkeypatch.setenv("VF_MAX_TEXT_CHARS", "0")                     # 0 = unlimited
+    assert tts.max_text_chars() == 0
+    assert tts.synthesize_mp3("word. " * 40000, "en-US-JennyNeural")
+    monkeypatch.setenv("VF_MAX_TEXT_CHARS", "garbage")
+    assert tts.max_text_chars() == tts.DEFAULT_MAX_TEXT_CHARS
+
+
+def test_default_limit_is_far_above_the_old_5000():
+    assert tts.DEFAULT_MAX_TEXT_CHARS >= 100_000
+
+
+def test_no_audio_gets_a_helpful_message(monkeypatch):
+    class Silent:
+        def __init__(self, *a, **k):
+            pass
+
+        async def stream(self):
+            raise tts.edge_tts.exceptions.NoAudioReceived("No audio was received.")
+            yield  # pragma: no cover
+
+    monkeypatch.setattr(tts.edge_tts, "Communicate", Silent)
+    with pytest.raises(tts.TTSUnavailable) as e:
+        tts.synthesize_mp3("مرحبا", "fr-FR-DeniseNeural")
+    assert "language" in str(e.value).lower() and "voice" in str(e.value).lower()
+
+
+# ---------------------------------------------------------------- languages
+
+def test_catalog_has_dozens_of_languages_and_no_unusable_voices():
+    langs = {c.split("-")[0] for c, _ in tts.list_languages()}
+    assert len(langs) >= 70
+    assert not any(v.language.startswith("iu") for v in tts.VOICES)          # names the library rejects
+    assert not any(v.id in tts.KNOWN_BROKEN for v in tts.VOICES)
+    assert all(tts._VALID_VOICE_ID.match(v.id) for v in tts.VOICES)
+
+
+def test_every_language_has_a_native_sample_sentence():
+    from samples import SAMPLES, sample_for
+
+    langs = {c.split("-")[0] for c, _ in tts.list_languages()}
+    missing = sorted(l for l in langs if l not in SAMPLES)
+    assert missing == [] or len(missing) <= 4, missing                   # the rest fall back to English
+    assert sample_for("ar-SA") == SAMPLES["ar"] and sample_for("fr-CA") == SAMPLES["fr"]
+    assert sample_for("xx-XX") == SAMPLES["en"]
+
+
+def test_samples_use_the_right_script():
+    from samples import SAMPLES
+    import unicodedata
+
+    def first_letter_script(text):
+        for ch in text:
+            if ch.isalpha():
+                return unicodedata.name(ch).split()[0]
+
+    assert first_letter_script(SAMPLES["ar"]) == "ARABIC" and first_letter_script(SAMPLES["ur"]) == "ARABIC"
+    assert first_letter_script(SAMPLES["hi"]) == "DEVANAGARI" and first_letter_script(SAMPLES["ru"]) == "CYRILLIC"
+    assert first_letter_script(SAMPLES["el"]) == "GREEK" and first_letter_script(SAMPLES["ko"]) == "HANGUL"
+    assert first_letter_script(SAMPLES["th"]) == "THAI" and first_letter_script(SAMPLES["he"]) == "HEBREW"
+
+
+def test_voices_endpoint_exposes_samples_limits_and_names(client):
+    d = client.get("/api/voices").get_json()
+    assert d["samples"]["fr"].startswith("Bienvenue") and len(d["languages"]) >= 100
+    assert d["limits"]["max_text_chars"] == tts.max_text_chars() and d["limits"]["sync_export_chars"] == web.SYNC_EXPORT_CHARS
+    assert all("name" in v for v in d["voices"])
+
+
+# ---------------------------------------------------------------- long exports over HTTP
+
+def test_long_text_export_runs_as_a_job(client, fake_service, tmp_path, monkeypatch):
+    import time
+    import video
+
+    monkeypatch.setattr(web, "jobs", video.JobManager(tmp_path))
+    text = " ".join(f"Sentence {i} is here." for i in range(2000))            # ~40,000 characters
+    assert client.post("/api/export", json={"text": text, "voice": "en-US-JennyNeural"}).status_code == 413
+    r = client.post("/api/tts/jobs", json={"text": text, "lang": "en-US", "gender": "female"})
+    assert r.status_code == 202
+    jid = r.get_json()["job_id"]
+    for _ in range(200):
+        st = client.get(f"/api/jobs/{jid}").get_json()
+        if st["status"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert st["status"] == "done" and st["kind"] == "audio", st
+    mp3 = client.get(f"/api/jobs/{jid}/speech.mp3")
+    assert mp3.status_code == 200 and mp3.mimetype == "audio/mpeg" and len(mp3.data) > len(fake_service.payload) * 5
+
+
+def test_tts_job_rejects_bad_input(client, tmp_path, monkeypatch):
+    import video
+
+    monkeypatch.setattr(web, "jobs", video.JobManager(tmp_path))
+    assert client.post("/api/tts/jobs", json={"text": "", "lang": "en-US", "gender": "male"}).status_code == 400
+    assert client.post("/api/tts/jobs", json={"text": "hi", "voice": "nope"}).status_code == 400
+    monkeypatch.setenv("VF_MAX_TEXT_CHARS", "10")
+    assert client.post("/api/tts/jobs", json={"text": "x" * 11, "lang": "en-US", "gender": "male"}).status_code == 400
+
+
+def test_tts_job_respects_login_gate(client, monkeypatch):
+    monkeypatch.setattr(web, "REQUIRE_LOGIN", True)
+    assert client.post("/api/tts/jobs", json={"text": "hi", "lang": "en-US", "gender": "male"}).status_code == 401
+
+
+# ---- translator ----
+def test_translate_chunks_and_codes():
+    import translate as tr
+    assert tr.api_code("zh-TW") == "zh-Hant" and tr.api_code("ar-SA") == "ar" and tr.api_code("zh-CN") == "zh-Hans"
+    text = ("Hello world. " * 600) + "\n" + "x" * 7000
+    parts = tr.split_chunks(text)
+    assert "".join(parts) == text and all(len(p) <= 3000 for p in parts)
+    out = tr.translate("Hello. Bye.", "fr-FR", backend=lambda ch, s, d: [c.upper() + d for c in ch])
+    assert out == "HELLO. BYE.fr"
+    assert tr.translate("same", "en-US", "en-GB", backend=lambda *a: 1 / 0) == "same"
+    for bad in ("", "  "):
+        try:
+            tr.translate(bad, "fr-FR"); assert False
+        except tr.TranslateError:
+            pass
+
+
+def test_translate_endpoint(monkeypatch):
+    import app as appmod
+    import translate as tr
+    monkeypatch.setattr(tr, "_default_backend", lambda ch, s, d: ["[" + d + "]" + c for c in ch])
+    c = appmod.app.test_client()
+    r = c.post("/api/translate", json={"text": "Hi", "to": "ar-SA"})
+    assert r.status_code == 200 and r.get_json()["text"] == "[ar]Hi"
+    assert c.post("/api/translate", json={"text": "", "to": "ar-SA"}).status_code == 400
