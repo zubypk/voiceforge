@@ -260,9 +260,8 @@ def render_timeline(tl: dict, out_path: Path, assets: "video.AssetStore | None",
                         f"alimiter=limit=0.95[aout]")
         else:
             filt.append("[1:a]anull[aout]")
-        script = work / "graph.txt"
-        script.write_text(";\n".join(filt), encoding="utf-8")
-        cmd += ["-filter_complex_script", str(script), "-map", "[vout]", "-map", "[aout]",
+        # inline graph: -filter_complex_script was removed in newer ffmpeg builds (the Docker image uses ffmpeg 7.x)
+        cmd += ["-filter_complex", ";".join(filt), "-map", "[vout]", "-map", "[aout]",
                 "-c:v", "libx264", "-preset", "ultrafast" if tl["resolution"] == "480" else "veryfast",
                 "-crf", "20" if heavy else "22", "-pix_fmt", "yuv420p", "-r", str(FPS),
                 "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
