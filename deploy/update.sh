@@ -20,12 +20,13 @@ log() { printf '\n== %s\n' "$*"; }
 log "Updating code"
 REPO="${REPO:-https://github.com/zubypk/voiceforge}"
 if [ "${SKIP_PULL:-0}" = "1" ]; then echo "(pull skipped)"
-elif [ ! -d .git ]; then   # turn an existing copied folder into a checkout; venv/, data/, .secret_key are git-ignored and kept
-  git init -q && git remote add origin "$REPO"
-  git fetch -q origin main && git reset -q --hard origin/main
-else
-  [ -f .git/shallow ] && git fetch -q --unshallow origin || true
-  git pull -q --ff-only
+else   # a deploy folder always mirrors origin/main; venv/, data/, .secret_key, logs are git-ignored and kept
+  [ -d .git ] || git init -q
+  git remote get-url origin >/dev/null 2>&1 || git remote add origin "$REPO"
+  [ -f .git/shallow ] && git fetch -q --unshallow origin main || true
+  git fetch -q origin main
+  git checkout -q -B main origin/main 2>/dev/null || git reset -q --hard origin/main
+  git reset -q --hard origin/main
 fi
 git log --oneline -1 2>/dev/null || true
 
