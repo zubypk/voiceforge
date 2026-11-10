@@ -1438,7 +1438,7 @@ class JobManager:
             if owner_dir.is_dir():
                 AssetStore(owner_dir).cleanup(self.ttl, keep)
 
-    def _new_job(self, kind: str) -> dict:
+    def _new_job(self, kind: str, owner: str | None = None) -> dict:
         self.cleanup()
         if self.active_count() >= self.MAX_ACTIVE:
             raise VideoError("The server is busy with other jobs. Please try again in a minute.")
@@ -1446,13 +1446,13 @@ class JobManager:
         d = self.jobs_dir / job_id
         d.mkdir()
         job = {"id": job_id, "kind": kind, "status": "queued", "progress": 0.0, "message": "queued",
-               "error": None, "duration": None, "dir": str(d)}
+               "error": None, "duration": None, "dir": str(d), "owner": owner}
         self._write(job)
         return job
 
     def submit(self, project: dict, tts_fn=None, owner: str = "anonymous0") -> str:
         """Start rendering a validated project. (`owner` selects whose uploads the project may use.)"""
-        job = self._new_job("video")
+        job = self._new_job("video", owner)
         assets = self.assets_for(owner)
 
         def work(d: Path, update):
@@ -1463,10 +1463,24 @@ class JobManager:
         threading.Thread(target=self._run, args=(job, work), daemon=True).start()
         return job["id"]
 
-    def submit_tts(self, text: str, voice_id: str, rate: int = 0, pitch: int = 0, tts_fn=None) -> str:
+    def submit_timeline(self, tl: dict, owner: str = "anonymous0") -> str:
+        """Render a validated multi-track timeline (see timeline.py)."""
+        import timeline as timeline_mod
+        job = self._new_job("video", owner)
+        assets = self.assets_for(owner)
+
+        def work(d: Path, update):
+            info = timeline_mod.render_timeline(tl, d / "video.mp4", assets, lambda p, m: update(progress=round(p, 3), message=m))
+            (d / "captions.srt").write_text("", encoding="utf-8")
+            return {"duration": info["duration"]}
+
+        threading.Thread(target=self._run, args=(job, work), daemon=True).start()
+        return job["id"]
+
+    def submit_tts(self, text: str, voice_id: str, rate: int = 0, pitch: int = 0, tts_fn=None, owner: str | None = None) -> str:
         """Start a long text-to-MP3 export."""
         tts._validate(text, voice_id, rate, pitch, tts.max_text_chars())
-        job = self._new_job("audio")
+        job = self._new_job("audio", owner)
         fn = tts_fn or tts.synthesize_mp3
 
         def work(d: Path, update):
@@ -1492,14 +1506,18 @@ class JobManager:
             except Exception as exc:  # never leave a job stuck in "running"
                 update(status="error", error=f"Unexpected error: {exc}", message="failed")
 
-    def get(self, job_id: str) -> dict | None:
+    def get(self, job_id: str, owner: str | None = None) -> dict | None:
+        """A job, only for the user who started it (when `owner` is given)."""
         if not re.fullmatch(r"[0-9a-f]{32}", job_id or ""):
             return None
         d = self.jobs_dir / job_id
-        return self._read(d) if d.is_dir() else None
+        job = self._read(d) if d.is_dir() else None
+        if job and owner is not None and job.get("owner") not in (None, owner):
+            return None
+        return job
 
-    def file(self, job_id: str, name: str) -> Path | None:
-        job = self.get(job_id)
+    def file(self, job_id: str, name: str, owner: str | None = None) -> Path | None:
+        job = self.get(job_id, owner)
         if not job or job["status"] != "done" or name not in self.FILES:
             return None
         p = Path(job["dir"]) / name

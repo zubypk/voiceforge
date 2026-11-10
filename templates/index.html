@@ -208,6 +208,109 @@
   .feat i{font-style:normal;font-size:22px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--grad);margin-bottom:10px}
   .feat b{display:block;margin-bottom:4px}.feat span{color:var(--muted);font-size:14px;line-height:1.5}
   .build{display:inline-block;margin-top:8px;font-variant-numeric:tabular-nums;opacity:.85}
+  /* ---- app shell: menu bar, module tabs, ribbon, workspaces ---- */
+  #studio{padding-top:10px}
+  .appbar{position:sticky;top:62px;z-index:15;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:14px;backdrop-filter:blur(12px)}
+  .menubar{display:flex;align-items:center;gap:2px;padding:4px 8px;border-bottom:1px solid var(--line);font-size:13px}
+  .mbtn{border:0;background:none;color:var(--text);padding:5px 10px;border-radius:7px;cursor:pointer;font:inherit}
+  .mbtn:hover,.mbtn.on{background:var(--card2)}
+  .msep{width:1px;height:18px;background:var(--line);margin:0 8px}
+  .doc-title{width:auto!important;min-width:140px;max-width:280px;border:1px solid transparent!important;background:transparent!important;padding:4px 8px!important;font-weight:600;font-size:14px!important;border-radius:8px!important}
+  .doc-title:hover,.doc-title:focus{border-color:var(--line)!important;background:var(--input)!important}
+  .wsswitch{display:flex;background:var(--input);border:1px solid var(--line);border-radius:9px;padding:2px}
+  .wsbtn{border:0;background:none;color:var(--muted);padding:4px 10px;border-radius:7px;cursor:pointer;font:inherit;font-size:12px}
+  .wsbtn.on{background:var(--grad);color:var(--on-grad)}
+  .modtabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+  .modtabs .tab{flex:none;min-width:0;border:1px solid transparent;border-bottom:0;background:none;color:var(--muted);border-radius:10px 10px 0 0;padding:8px 14px;font-size:14px;box-shadow:none;margin-bottom:-1px}
+  .modtabs .tab:hover{color:var(--text);background:var(--card2)}
+  .modtabs .tab.on{background:var(--bg);color:var(--text);border-color:var(--line);font-weight:600;box-shadow:inset 0 3px 0 var(--accent)}
+  .ribbon{display:flex;gap:4px;padding:6px 8px;overflow-x:auto;background:var(--bg);border-radius:0 0 14px 14px;min-height:76px}
+  .rgroup{display:flex;flex-direction:column;align-items:center;padding:0 8px;border-inline-end:1px solid var(--line)}.rgroup:last-child{border:0}
+  .ritems{display:flex;gap:2px;flex:1}
+  .rlabel{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;white-space:nowrap}
+  .rbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:58px;max-width:82px;padding:5px 6px;border:1px solid transparent;background:none;color:var(--text);border-radius:9px;cursor:pointer;font:inherit;font-size:11px;line-height:1.15}
+  .rbtn span{text-align:center;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .rbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .rbtn:hover{background:var(--card2);border-color:var(--line)}
+  .rbtn.primary svg{color:var(--accent)}.rbtn.primary span{font-weight:600}
+  .mdrop{position:fixed;z-index:70;min-width:230px;background:var(--modal);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.3);padding:6px}
+  .mdrop button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--text);padding:7px 10px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;text-align:start}
+  .mdrop button:hover{background:var(--card2)}.mdrop button em{margin-inline-start:auto;font-style:normal;color:var(--accent)}
+  .mdrop svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+  .mdrop hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+  kbd{background:var(--card2);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px}
+  .subtabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}
+  .stab{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:7px 16px;cursor:pointer;font:inherit;font-size:14px}
+  .stab.on{background:var(--grad);color:var(--on-grad);border-color:transparent;font-weight:600}
+  #projCard{display:none}
+  .tl-bar .tl-group:nth-child(2),.tl-bar .tl-group:nth-child(3){display:none}
+  #viewAudio .row.tools{display:none}
+  .statusbar{display:none}
+  /* Video Studio: scene list | fields | preview that stays in place */
+  #viewVideo .editor{grid-template-columns:210px minmax(0,1fr) minmax(300px,38%)}
+  .se-preview{position:sticky;top:calc(70px + var(--appbar-h,150px));align-self:start}
+  .tl-top{top:calc(66px + var(--appbar-h,150px))}
+  /* ---- Desktop workspace: full-screen app, panels scroll inside ---- */
+  html[data-ws=desktop] body{overflow:hidden;background:var(--bg)}
+  html[data-ws=desktop] nav .links,html[data-ws=desktop] .marquee,html[data-ws=desktop] header.hero,html[data-ws=desktop] .ad-slot,
+  html[data-ws=desktop] #guide,html[data-ws=desktop] #about,html[data-ws=desktop] footer{display:none!important}
+  html[data-ws=desktop] main.wrap{max-width:none;padding:0}
+  html[data-ws=desktop] #studio{position:fixed;top:57px;bottom:26px;left:0;right:0;padding:0;display:flex;flex-direction:column}
+  html[data-ws=desktop] .appbar{position:static;border-radius:0;border-width:0 0 1px;margin:0;box-shadow:none}
+  html[data-ws=desktop] .ribbon{border-radius:0}
+  html[data-ws=desktop] .viewport{flex:1;min-height:0;overflow:auto;padding:14px 18px}
+  html[data-ws=desktop] .se-preview{top:0}
+  html[data-ws=desktop] #viewTimeline.on{height:100%}
+  html[data-ws=desktop] .tl-app{height:100%}
+  html[data-ws=desktop] .tl-top{position:static;flex:0 0 auto}
+  html[data-ws=desktop] .tl-stage-wrap,html[data-ws=desktop] .tl-inspector{height:min(38vh,420px)}
+  html[data-ws=desktop] .tl-tracks{flex:1;min-height:150px;overflow:auto}
+  html[data-ws=desktop] .statusbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:26px;align-items:center;gap:12px;padding:0 14px;font-size:12px;color:var(--muted);background:var(--card);border-top:1px solid var(--line);z-index:20}
+  html[data-ws=desktop] .card{box-shadow:none}
+  @media(max-width:820px){.appbar{top:56px}.ribbon{min-height:66px}.rbtn{min-width:52px}#viewVideo .editor{grid-template-columns:1fr}.se-preview{position:static}.doc-title{max-width:140px}}
+  /* ---- Video Studio play preview ---- */
+  .vp-stage{position:relative;width:100%;max-height:70vh;background:#000;border-radius:12px;overflow:hidden;margin:0 auto}
+  .vp-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0}
+  .vp-cap{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);max-width:86%;background:rgba(0,0,0,.65);color:#fff;font-weight:700;padding:6px 14px;border-radius:9px;z-index:3;text-align:center;font-size:clamp(13px,2.2vw,20px)}
+  .vp-load{position:absolute;inset:0;display:grid;place-items:center;color:#fff;z-index:4;background:rgba(0,0,0,.35);font-size:14px}
+  .vp-ctl{display:flex;align-items:center;gap:8px;margin-top:10px}.vp-bar{flex:1;height:6px;background:var(--line);border-radius:9px;overflow:hidden}.vp-bar i{display:block;height:100%;width:0;background:var(--grad)}
+  /* ---- timeline editor ---- */
+  .tl-app{display:flex;flex-direction:column;gap:8px}
+  .tl-top{display:grid;grid-template-columns:1fr 300px;gap:10px;position:sticky;top:64px;z-index:5;background:var(--bg);padding-top:4px}
+  .tl-stage-wrap{height:min(46vh,420px);display:grid;place-items:center;background:var(--card2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .tl-stage{position:relative;overflow:hidden;background:#000;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  .tl-el{position:absolute;display:block}
+  .tl-inspector{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;height:min(46vh,420px);overflow:auto;font-size:13px}
+  .tl-inspector h4{margin:0 0 8px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tl-f{display:flex;flex-direction:column;gap:3px;margin:0 0 6px;font-size:11px;text-transform:none;letter-spacing:0}
+  .tl-f input[type=number],.tl-f select,.tl-f textarea{padding:5px 7px;font-size:13px;border-radius:8px}
+  .tl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 8px}
+  .tl-group{display:flex;gap:4px;align-items:center;padding-inline-end:8px;border-inline-end:1px solid var(--line)}.tl-group:last-child{border:0;margin-inline-start:auto}
+  .tl-btn{min-width:34px;height:32px;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:8px;cursor:pointer;font:inherit;font-size:14px;padding:0 8px}
+  .tl-btn:hover{border-color:var(--accent)}.tl-btn.primary{background:var(--grad);color:var(--on-grad);border:0}.tl-btn.wide{padding:0 14px;font-weight:600}
+  .tl-btn.rec.on{background:#e5484d;color:#fff}
+  .tl-time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);margin-inline-start:6px;min-width:120px}
+  .tl-tracks{display:grid;grid-template-columns:150px 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+  .tl-heads{border-inline-end:1px solid var(--line);background:var(--card2)}
+  .tl-corner{height:24px;display:flex;gap:2px;align-items:center;padding:0 4px;border-bottom:1px solid var(--line)}
+  .tl-head{height:46px;display:flex;align-items:center;gap:4px;padding:0 6px;border-bottom:1px solid var(--line);font-size:12px}
+  .tl-head i{font-style:normal;width:18px;text-align:center;color:var(--muted)}.tl-head b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;font-weight:600}
+  .tl-ic{border:0;background:none;color:var(--text);cursor:pointer;font-size:12px;padding:2px 3px;border-radius:5px}.tl-ic:hover{background:var(--card)}
+  .tl-scroll{position:relative;overflow-x:auto;overflow-y:hidden;direction:ltr}
+  .tl-ruler{height:24px;position:relative;border-bottom:1px solid var(--line);cursor:pointer;background:var(--card2)}
+  .tl-ruler span{position:absolute;top:4px;font-size:10px;color:var(--muted);padding-left:3px;border-left:1px solid var(--line);height:20px}
+  .tl-lane{height:46px;position:relative;border-bottom:1px solid var(--line)}.tl-lane.off{opacity:.45}
+  .tl-lane.k-audio{background:repeating-linear-gradient(90deg,transparent 0 59px,rgba(127,127,127,.06) 59px 60px)}
+  .tl-clip{position:absolute;top:4px;height:38px;border-radius:8px;background:var(--accent) center/auto 100% repeat-x;color:#fff;font-size:11px;overflow:hidden;cursor:grab;border:2px solid transparent;box-sizing:border-box;touch-action:none;user-select:none}
+  .tl-clip span{position:absolute;inset:auto 6px 3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none}
+  .tl-clip.t-audio{background:linear-gradient(180deg,#0ca678,#087f5b)}.tl-clip.t-text{background:linear-gradient(180deg,#f59f00,#e67700)}
+  .tl-clip.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}.tl-clip.drag{opacity:.85;cursor:grabbing;z-index:2}.tl-lane.drop{background:rgba(124,92,255,.14)}
+  .tl-clip .h{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;background:rgba(255,255,255,.25)}.tl-clip .h.l{left:0}.tl-clip .h.r{right:0}
+  .tl-playhead{position:absolute;top:0;bottom:0;width:2px;background:#ff3b30;pointer-events:none;z-index:3}
+  .tl-playhead::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:#ff3b30}
+  .tl-empty{position:absolute;left:16px;top:60px;color:var(--muted);font-size:14px;pointer-events:none}
+  @media(max-width:820px){.tl-top{grid-template-columns:1fr;position:static}.tl-inspector{height:auto}.tl-tracks{grid-template-columns:96px 1fr}}
   @media(max-width:820px){.features{grid-template-columns:1fr 1fr}.theme-pick{display:none}}
   @media(max-width:820px){.grid2,.grid3,.steps,.editor{grid-template-columns:1fr}.links{display:none}.kv{grid-template-columns:1fr}.slist{max-height:none;flex-direction:row;overflow-x:auto}.sitem{flex:none;max-width:200px}}
 </style>
@@ -218,6 +321,7 @@
   <div class="links">
     <a href="#studio" data-go="voice" data-i="nav_voice">Voice</a>
     <a href="#studio" data-go="video" data-i="nav_video">Video</a>
+    <a href="#studio" data-go="timeline" data-i="nav_timeline">Timeline</a>
     <a href="#studio" data-go="stt" data-i="nav_stt">Speech to text</a>
     <a href="#studio" data-go="audio" data-i="nav_audio">Audio editor</a>
     <a href="#guide" data-i="nav_guide">Guide</a>
@@ -255,12 +359,31 @@
 <div class="ad-slot" data-ad="top" hidden></div>
 
 <section id="studio">
-  <div class="tabs">
-    <button class="tab on" id="tabVoice" data-i="tab_voice">🎙 Text to Speech</button>
-    <button class="tab" id="tabVideo" data-i="tab_video">🎬 Video Studio</button>
-    <button class="tab" id="tabStt" data-i="tab_stt">🗣 Speech to Text</button>
-    <button class="tab" id="tabAudio" data-i="tab_audio">🎚 Audio Editor</button>
+  <div class="appbar" id="appbar">
+    <div class="menubar">
+      <button class="mbtn" data-menu="file" data-i="m_file">File</button>
+      <button class="mbtn" data-menu="edit" data-i="m_edit">Edit</button>
+      <button class="mbtn" data-menu="view" data-i="m_view">View</button>
+      <button class="mbtn" data-menu="help" data-i="m_help">Help</button>
+      <span class="msep"></span>
+      <input class="doc-title" id="docTitle" maxlength="80" data-iph="p_name_ph" aria-label="Project name">
+      <span class="pill" id="docStatus"></span>
+      <span class="spacer"></span>
+      <div class="wsswitch" role="group" aria-label="Workspace">
+        <button class="wsbtn" data-ws="web" data-i="ws_web_s">🌐 Web</button>
+        <button class="wsbtn" data-ws="desktop" data-i="ws_desktop_s">🖥 Desktop</button>
+      </div>
+    </div>
+    <div class="modtabs" role="tablist">
+      <button class="tab on" id="tabVoice" data-i="tab_voice">🎙 Text to Speech</button>
+      <button class="tab" id="tabVideo" data-i="tab_video">🎬 Video Studio</button>
+      <button class="tab" id="tabTimeline" data-i="tab_timeline">🎞 Timeline Editor</button>
+      <button class="tab" id="tabStt" data-i="tab_stt">🗣 Speech to Text</button>
+      <button class="tab" id="tabAudio" data-i="tab_audio">🎚 Audio Editor</button>
+    </div>
+    <div class="ribbon" id="ribbon" role="toolbar"></div>
   </div>
+  <div class="viewport" id="viewport">
 
   <!-- ===================== VOICE ===================== -->
   <div class="view on" id="viewVoice">
@@ -316,7 +439,7 @@
 
   <!-- ===================== VIDEO ===================== -->
   <div class="view" id="viewVideo">
-    <div class="card">
+    <div class="card" id="projCard">
       <div class="pbar"><input type="text" id="pName" maxlength="80" data-iph="p_name_ph" aria-label="Project name"><span class="pill" id="pStatus"></span></div>
       <div class="row" style="margin-top:10px">
         <button class="btn sm" id="pNew" data-i="p_new">＋ New</button>
@@ -331,13 +454,19 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="subtabs" id="vTabs" role="tablist">
+      <button class="stab on" data-vt="scenes" data-i="vt_scenes">🎬 Scenes</button>
+      <button class="stab" data-vt="setup" data-i="vt_setup">🖥 Format &amp; style</button>
+      <button class="stab" data-vt="sound" data-i="vt_sound">🎙 Voice &amp; music</button>
+      <button class="stab" data-vt="export" data-i="vt_export">⬇ Export</button>
+    </div>
+    <div class="card" data-vtab="setup">
       <h3 data-i="v_start">1 · Start from a preset</h3>
       <p class="hint" data-i="v_start_h"></p>
       <div class="cards" id="presetCards"></div>
     </div>
 
-    <div class="card">
+    <div class="card" data-vtab="setup">
       <h3 data-i="v_format">2 · Format, resolution & style</h3>
       <span class="lbl" data-i="v_ratio">Screen shape</span>
       <div class="cards" id="ratioCards"></div>
@@ -351,7 +480,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-vtab="sound">
       <h3 data-i="v_voice">3 · Narration voice</h3>
       <div class="grid2">
         <div><label for="vLanguage" data-i="language">Language</label><select id="vLanguage"></select></div>
@@ -365,7 +494,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-vtab="sound">
       <h3 data-i="v_music">4 · Background music (optional)</h3>
       <div class="mediarow">
         <div class="thumb empty">♪</div>
@@ -385,7 +514,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-vtab="scenes">
       <h3 data-i="v_scenes">5 · Scenes</h3>
       <div class="editor">
         <div>
@@ -478,15 +607,16 @@
             <div class="row" id="sfxDelRow" style="display:none"><button class="btn sm danger" id="sfxDel" data-i="v_media_remove">Remove</button></div>
           </details>
 
-          <div style="margin-top:14px">
-            <div class="row" style="margin-top:0"><span class="lbl" style="margin:0" data-i="v_preview">Slide preview</span><span class="hint" id="prevNote"></span></div>
-            <div class="pwrap" id="pWrap"><img class="preview" id="scenePreview" alt=""><div id="layerHost"></div></div>
-          </div>
+        </div>
+        <div class="se-preview">
+          <div class="row" style="margin-top:0"><span class="lbl" style="margin:0" data-i="v_preview">Slide preview</span><span class="hint" id="prevNote"></span></div>
+          <div class="pwrap" id="pWrap"><img class="preview" id="scenePreview" alt=""><div id="layerHost"></div></div>
+          <div class="row"><button class="btn sm primary" id="vPlayAll" data-i="vp_play">▶ Play preview</button><span class="hint" data-i="vp_hint">Plays all scenes with voices and music — no export needed.</span></div>
         </div>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-vtab="export">
       <h3 data-i="v_render">6 · Render & export</h3>
       <div class="row" style="margin-top:0">
         <button class="btn primary" id="renderBtn" data-i="v_render_btn">🎬 Render MP4</button>
@@ -501,6 +631,57 @@
       </div>
     </div>
   </div>
+  <div class="view" id="viewTimeline">
+    <div class="tl-app">
+      <div class="tl-top">
+        <div class="tl-stage-wrap" id="tlStageWrap"><div class="tl-stage" id="tlStage"></div></div>
+        <div class="tl-inspector" id="tlInspector"></div>
+      </div>
+      <div class="tl-bar">
+        <div class="tl-group">
+          <button class="tl-btn" id="tlStart" title="Start">⏮</button>
+          <button class="tl-btn primary" id="tlPlay" title="Play / pause (Space)">▶</button>
+          <button class="tl-btn" id="tlEnd" title="End">⏭</button>
+          <span class="tl-time" id="tlTime">0:00.0 / 0:00.0</span>
+        </div>
+        <div class="tl-group">
+          <button class="tl-btn" id="tlSplit" data-it="tl_split" title="Split at playhead (S)">✂</button>
+          <button class="tl-btn" id="tlDup" data-it="v_dup" title="Duplicate (Ctrl+D)">⧉</button>
+          <button class="tl-btn" id="tlDelete" data-it="v_del" title="Delete (Del)">🗑</button>
+          <button class="tl-btn" id="tlUndo" data-it="ae_undo" title="Undo (Ctrl+Z)">↶</button>
+          <button class="tl-btn" id="tlRedo" data-it="ae_redo" title="Redo (Ctrl+Y)">↷</button>
+        </div>
+        <div class="tl-group">
+          <button class="tl-btn" id="tlAddMedia" data-it="tl_add_media" title="Add video / image / audio">＋🎞</button>
+          <button class="tl-btn" id="tlAddPhoto" data-it="lt_photos" title="Free photos">🖼</button>
+          <button class="tl-btn" id="tlAddOverlay" data-it="ly_add" title="Clip art / shapes">🧩</button>
+          <button class="tl-btn" id="tlAddText" data-it="tl_add_text" title="Text">T</button>
+          <button class="tl-btn" id="tlAddColor" data-it="tl_color" title="Colour block">■</button>
+          <button class="tl-btn" id="tlAddMusic" data-it="lt_music" title="Music">🎵</button>
+          <button class="tl-btn" id="tlAddSfx" data-it="sx_title" title="Sound effect">🔊</button>
+          <button class="tl-btn rec" id="tlRec" data-it="tl_rec" title="Record voice">🎤</button>
+          <button class="tl-btn" id="tlFromScenes" data-it="tl_from_scenes" title="Bring scenes from Video Studio">⇩🎬</button>
+        </div>
+        <div class="tl-group">
+          <label class="check" title="Snap"><input type="checkbox" id="tlSnap" checked><span data-i="tl_snap">Snap</span></label>
+          <input type="range" id="tlZoom" min="8" max="300" value="60" title="Zoom" style="width:110px">
+          <button class="tl-btn primary wide" id="tlExport" data-i="tl_export">⬇ Export MP4</button>
+        </div>
+      </div>
+      <div class="bar" id="tlBar" style="display:none;margin:0 0 6px"><i id="tlBarFill"></i></div>
+      <div class="hint" id="tlStatus"></div>
+      <div class="tl-tracks">
+        <div class="tl-heads"><div class="tl-corner"><button class="tl-ic" id="tlAddTrackV" title="+ video track">+▣</button><button class="tl-ic" id="tlAddTrackO" title="+ overlay track">+T</button><button class="tl-ic" id="tlAddTrackA" title="+ audio track">+♪</button></div><div id="tlHeads"></div></div>
+        <div class="tl-scroll" id="tlScroll">
+          <div class="tl-ruler" id="tlRuler"></div>
+          <div class="tl-lanes" id="tlLanes"></div>
+          <div class="tl-playhead" id="tlPlayhead"></div>
+          <div class="tl-empty" id="tlEmpty" data-i="tl_empty">Add media, text or music — or bring your Video Studio scenes — to start editing.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="view" id="viewStt">
     <div class="card">
       <h3 data-i="stt_title">Speech to text — live typing</h3>
@@ -591,6 +772,7 @@
     </div>
   </div>
 
+  </div>
 </section>
 
 <div class="ad-slot" data-ad="middle" hidden></div>
@@ -662,6 +844,7 @@ curl -X POST <span class="origin"></span>/api/export -H "Content-Type: applicati
 </section>
 </main>
 <div class="wrap"><div class="ad-slot" data-ad="footer" hidden></div></div>
+<div class="statusbar" id="statusbar"><span id="sbProject"></span><span class="spacer"></span><span id="sbBuild"></span></div>
 <footer><div class="wrap"><span data-i="foot"></span><br><span class="build" id="buildInfo"></span></div></footer>
 
 <div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><b id="mTitle"></b><button class="chip" id="mClose" data-i="close">Close</button></div><div id="mBody"></div></div></div>
@@ -675,7 +858,10 @@ curl -X POST <span class="origin"></span>/api/export -H "Content-Type: applicati
 <script src="/static/studio_fx.js"></script>
 <script src="/static/stt.js"></script>
 <script src="/static/audio_editor.js"></script>
+<script src="/static/timeline.js"></script>
+<script src="/static/preview.js"></script>
 <script src="/static/site.js"></script>
+<script src="/static/shell.js"></script>
 <script src="/static/ads.js"></script>
 </body>
 </html>

@@ -292,7 +292,7 @@ async function saveProject({ asNew = false, name = null, silent = false } = {}) 
 }
 function loadProjectInto(project, name, serverId, savedAt = null) {
   V.project = migrate(project); V.name = name || ""; V.serverId = serverId || null; V.dirty = false; V.savedAt = savedAt; V.sel = 0;
-  $("pName").value = V.name; $("result").style.display = "none"; setVStatus("", ""); refreshVideoUI(); saveLocal(); updateProjStatus();
+  $("pName").value = V.name; $("result").style.display = "none"; setVStatus("", ""); refreshVideoUI(); saveLocal(); updateProjStatus(); fire("project");
 }
 function newProject() {
   if (V.dirty && V.project.scenes.some((s) => s.title || s.body || s.narration) && !confirm(t("p_new_confirm"))) return;
@@ -632,7 +632,7 @@ function applyUI(lang) {
   if (cfg && V.project) { renderPresetCards(); renderRatios(); renderResolutions(); renderThemes(); renderMusic(); renderSceneList(); loadSceneFields(); updateProjStatus(); if (V.status) setVStatus(t(V.status.key), V.status.cls); }
   updateTextWarn(); fire("ui");
 }
-const VIEWS = ["voice", "video", "stt", "audio"];
+const VIEWS = ["voice", "video", "timeline", "stt", "audio"];
 const cap1 = (v) => v[0].toUpperCase() + v.slice(1);
 function showView(v) {
   if (!VIEWS.includes(v)) v = "voice";
@@ -678,7 +678,7 @@ const hooks = {};
 function fire(name, arg) { (hooks[name] || []).forEach((fn) => { try { fn(arg); } catch (e) { console.error(e); } }); }
 window.VF = {
   $, t, tf, api, postJson, toast, openModal, closeModal, pickAsset, loadAssets, uploadFiles, sceneAt, markDirty, schedulePreview,
-  refreshVideoUI, renderMusic, loadSceneFields, showView, langLabel, fillLanguages, sampleFor, fmtBytes, renderSceneList,
+  refreshVideoUI, renderMusic, loadSceneFields, showView, projectPayload, saveBlob, langLabel, fillLanguages, sampleFor, fmtBytes, renderSceneList,
   get V() { return V; }, get cfg() { return cfg; }, get catalog() { return catalog; }, get ui() { return ui; },
   get voiceLang() { return els.language.value; }, voiceText: (v) => { if (v === undefined) return els.text.value; els.text.value = v; els.text.dispatchEvent(new Event("input")); },
   setVoiceLang: (code) => { els.language.value = code; els.language.dispatchEvent(new Event("change")); },

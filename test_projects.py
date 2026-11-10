@@ -301,3 +301,28 @@ def test_adsense_off_by_default_and_configurable(monkeypatch):
     assert "pagead2.googlesyndication.com" in c.get("/").headers["Content-Security-Policy"]
     monkeypatch.setenv("ADSENSE_CLIENT", "<script>")
     assert appmod._adsense() == ("", {})
+
+
+def test_jobs_and_files_are_private_to_their_owner(monkeypatch):
+    """Another browser (different cookie) can't see someone else's render/export, even with the job id."""
+    import app as appmod
+    import tts_module as tts
+    monkeypatch.setattr(tts, "synthesize_mp3", lambda *a, **k: b"ID3fake")
+    alice, bob = appmod.app.test_client(), appmod.app.test_client()
+    job = alice.post("/api/tts/jobs", json={"text": "hello there", "lang": "en-US", "gender": "female"}).get_json()["job_id"]
+    import time
+    for _ in range(50):
+        if alice.get(f"/api/jobs/{job}").get_json()["status"] in ("done", "error"):
+            break
+        time.sleep(0.05)
+    assert alice.get(f"/api/jobs/{job}").status_code == 200
+    assert bob.get(f"/api/jobs/{job}").status_code == 404
+    assert bob.get(f"/api/jobs/{job}/speech.mp3").status_code == 404
+    # uploads are private too
+    import io
+    from PIL import Image
+    buf = io.BytesIO(); Image.new("RGB", (8, 8)).save(buf, "PNG")
+    a = alice.post("/api/video/assets", data={"file": (io.BytesIO(buf.getvalue()), "x.png")}, content_type="multipart/form-data").get_json()
+    assert alice.get(f"/api/assets/{a['id']}/file").status_code == 200
+    assert bob.get(f"/api/assets/{a['id']}/file").status_code == 404
+    assert a["id"] not in [x["id"] for x in bob.get("/api/assets").get_json()["assets"]]

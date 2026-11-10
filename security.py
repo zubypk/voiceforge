@@ -17,7 +17,7 @@ LIMITS = {
     "api_translate": (60, 600), "api_video_import": (20, 3600), "api_audio_convert": (40, 3600),
     "api_video_assets": (200, 3600), "api_library_search": (120, 600), "api_library_import": (60, 3600),
     "api_library_shape": (120, 600), "api_library_clipart": (120, 600), "api_library_sfx_add": (120, 600),
-    "api_projects_import": (20, 3600), "api_auth_google": (20, 600), "api_video_preview": (120, 60),
+    "api_projects_import": (20, 3600), "api_timeline_render": (20, 3600), "api_timeline_from_scenes": (20, 3600), "api_auth_google": (20, 600), "api_video_preview": (120, 60),
 }
 if os.environ.get("VF_RATE_LIMITS", "1") == "0":
     LIMITS = {}

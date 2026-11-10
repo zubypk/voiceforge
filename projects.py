@@ -28,39 +28,48 @@ def clean_name(name) -> str:
     return name or "Untitled project"
 
 
+_HEX32 = re.compile(r"[0-9a-f]{32}")
+
+
+def _walk_assets(obj, fn, parent=None, key=None):
+    """Visit every {"asset": "<id>"} object anywhere in a project (scenes, music, voice-overs, sound effects,
+    layers, timeline clips...). fn(holder_dict) may return False to have the holder removed."""
+    if isinstance(obj, dict):
+        if isinstance(obj.get("asset"), str) and _HEX32.fullmatch(obj["asset"]):
+            if fn(obj) is False:
+                return False
+        for k in list(obj):
+            if _walk_assets(obj[k], fn, obj, k) is False:
+                obj[k] = None
+    elif isinstance(obj, list):
+        keep = [x for x in obj if _walk_assets(x, fn, obj) is not False]
+        obj[:] = keep
+    return True
+
+
 def asset_ids(project: dict) -> list[str]:
-    """Every asset id a project refers to (backgrounds, scene media, music)."""
+    """Every asset id a project refers to, wherever it is used."""
     ids = []
-    for s in project.get("scenes", []) if isinstance(project, dict) else []:
-        for key in ("background", "media"):
-            a = (s.get(key) or {}).get("asset") if isinstance(s, dict) else None
-            if a:
-                ids.append(a)
-    m = (project.get("music") or {}).get("asset") if isinstance(project, dict) else None
-    if m:
-        ids.append(m)
-    return [a for a in dict.fromkeys(ids) if isinstance(a, str)]
+    _walk_assets(json.loads(json.dumps(project)) if isinstance(project, (dict, list)) else {}, lambda o: ids.append(o["asset"]))
+    return list(dict.fromkeys(ids))
 
 
 def remap_assets(project: dict, mapping: dict[str, str | None]) -> dict:
     """Return a copy of the project with asset ids replaced via `mapping` (None drops the media)."""
     p = json.loads(json.dumps(project))
+    for s in p.get("scenes", []) if isinstance(p, dict) else []:     # scene backgrounds fall back to the theme
+        bg = (s or {}).get("background") or {}
+        if bg.get("asset") and mapping.get(bg["asset"]) is None:
+            s["background"] = {"type": "theme", "color": bg.get("color", "#1d4e9e"), "asset": None}
 
-    def swap(obj, drop_kind=None):
-        if obj and obj.get("asset"):
-            new = mapping.get(obj["asset"])
-            obj["asset"] = new
-            return new is not None
+    def swap(o):
+        new = mapping.get(o["asset"])
+        if new is None:
+            return False          # drop media / layer / clip / music whose file is gone
+        o["asset"] = new
         return True
 
-    for s in p.get("scenes", []):
-        bg = s.get("background") or {}
-        if not swap(bg):
-            s["background"] = {"type": "theme", "color": bg.get("color", "#1d4e9e"), "asset": None}
-        if s.get("media") is not None and not swap(s["media"]):
-            s["media"] = None
-    if p.get("music") and not swap(p["music"]):
-        p["music"] = None
+    _walk_assets(p, swap)
     return p
 
 

@@ -25,6 +25,7 @@ import doc_import
 import library
 import projects as projects_mod
 import security
+import timeline as timeline_mod
 import translate as translate_mod
 import tts_module as tts
 import video
@@ -296,7 +297,7 @@ def api_tts_job():
         return gate
     try:
         text, voice, rate, pitch = _payload()
-        job_id = jobs.submit_tts(text, voice, rate, pitch)
+        job_id = jobs.submit_tts(text, voice, rate, pitch, owner=owner_id())
     except (tts.TTSError, video.VideoError, ValueError) as exc:
         return _error(exc)
     return jsonify(job_id=job_id), 202
@@ -305,7 +306,7 @@ def api_tts_job():
 @app.get("/api/jobs/<job_id>")
 @app.get("/api/video/jobs/<job_id>")
 def api_job(job_id):
-    job = jobs.get(job_id)
+    job = jobs.get(job_id, owner_id())          # private: only the browser/account that started it
     if not job:
         return jsonify(error="Job not found (it may have expired)."), 404
     return jsonify({k: job.get(k) for k in ("id", "kind", "status", "progress", "message", "error", "duration")})
@@ -314,7 +315,7 @@ def api_job(job_id):
 @app.get("/api/jobs/<job_id>/<name>")
 @app.get("/api/video/jobs/<job_id>/<name>")
 def api_job_file(job_id, name):
-    path = jobs.file(job_id, name)
+    path = jobs.file(job_id, name, owner_id())
     if not path:
         return jsonify(error="File not available."), 404
     if name == "video.mp4":
@@ -526,6 +527,31 @@ def api_video_preview():
     except (video.VideoError, ValueError) as exc:
         return _error(exc)
     return send_file(io.BytesIO(png), mimetype="image/png")
+
+
+@app.post("/api/timeline/render")
+def api_timeline_render():
+    """Render a multi-track timeline: {timeline} -> {job_id}; poll /api/jobs/<id>, download video.mp4."""
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        tl = timeline_mod.validate_timeline(data.get("timeline"), _assets())
+        return jsonify(job_id=jobs.submit_timeline(tl, owner=owner_id()))
+    except video.VideoError as exc:
+        return _error(exc)
+
+
+@app.post("/api/timeline/from-scenes")
+def api_timeline_from_scenes():
+    """Video Studio project -> timeline clips (slide images + narration audio)."""
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(timeline_mod.scenes_to_clips(data.get("project") or {}, _assets()))
+    except (video.VideoError, tts.TTSError, tts.TTSUnavailable) as exc:
+        return _error(exc)
 
 
 @app.post("/api/video/render")
