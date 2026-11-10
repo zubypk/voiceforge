@@ -7,3 +7,4 @@ out/
 .secret_key
 *.mp4
 .pytest_cache/
+build.json

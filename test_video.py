@@ -621,3 +621,78 @@ def test_video_endpoints_respect_login_gate(client, monkeypatch):
     assert client.post("/api/projects", json={"name": "x", "project": base_project()}).status_code == 401
     assert client.delete("/api/assets/" + "a" * 32).status_code == 401
     assert client.get("/api/video/config").status_code == 200
+
+
+# ---------------------------------------------------------------- effects, transitions, stickers, voice-over, sfx
+
+def _sticker_png():
+    im = Image.new("RGBA", (200, 200), (0, 0, 0, 0))
+    from PIL import ImageDraw
+    ImageDraw.Draw(im).ellipse((10, 10, 190, 190), fill=(255, 200, 0, 255))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_xfade_mirrors_for_rtl():
+    assert video.xfade_name("slideleft", False) == "slideleft"
+    assert video.xfade_name("slideleft", True) == "slideright"
+    assert video.xfade_name("diagtl", True) == "diagtr"
+    assert video.xfade_name("crossfade", True) == "fade"
+    assert video.xfade_name("fade", False) is None and video.xfade_name("none", True) is None
+
+
+def test_new_scene_fields_validate(assets, music_bytes):
+    st = assets.save(_sticker_png(), "s.png")
+    au = assets.save(music_bytes, "v.mp3")
+    p = video.validate_project(base_project(scenes=[{"layout": "title", "title": "x", "motion": "zoom_in", "look": "sepia",
+        "transition": "wipeleft", "voiceover": {"asset": au["id"]}, "sfx": {"asset": au["id"], "at": 99999, "volume": "abc"},
+        "stickers": [{"asset": st["id"], "x": 2, "y": -1, "w": 0.3, "anim": "bogus"}] * 12}]), assets)
+    s = p["scenes"][0]
+    assert s["motion"] == "zoom_in" and s["look"] == "sepia" and s["transition"] == "wipeleft"
+    assert s["sfx"]["at"] == 600.0 and s["sfx"]["volume"] == 0.8
+    assert len(s["stickers"]) == video.MAX_STICKERS and s["stickers"][0]["x"] == 1.0 and s["stickers"][0]["anim"] == "pop"
+    with pytest.raises(video.VideoError, match="voice-over"):
+        video.validate_project(base_project(scenes=[{"title": "x", "voiceover": {"asset": st["id"]}}]), assets)
+    # a scene with only a recorded voice-over is not "empty"
+    video.validate_project(base_project(scenes=[{"voiceover": {"asset": au["id"]}}]), assets)
+
+
+def test_render_with_every_effect(tmp_path, assets, fake_tts, music_bytes, mp4_bytes):
+    st = assets.save(_sticker_png(), "s.png")
+    vo = assets.save(music_bytes, "voice.mp3")           # 3 s "recording"
+    bg = assets.save(png_bytes((640, 480), (30, 90, 160)), "bg.png")
+    clip = assets.save(mp4_bytes, "c.mp4")
+    anims = list(video.STICKER_ANIMS)
+    scenes = [
+        {"layout": "title", "title": "Hello", "narration": "Hello there friends.", "motion": "zoom_in", "look": "warm",
+         "transition": "slideleft", "stickers": [{"asset": st["id"], "x": 0.2 + 0.08 * k, "y": 0.3, "w": 0.08, "anim": a, "start": 0.2}
+                                                  for k, a in enumerate(anims)]},
+        {"layout": "bullets", "title": "مرحبا", "body": "أ\nب", "narration": "", "voiceover": {"asset": vo["id"]},
+         "background": {"type": "image", "asset": bg["id"]}, "motion": "pan_left", "look": "vignette", "transition": "circleopen",
+         "sfx": {"asset": vo["id"], "at": 0.5, "volume": 0.5}},
+        {"layout": "text", "title": "Clip", "body": "video", "duration": 2.5, "media": {"asset": clip["id"]}, "look": "grayscale",
+         "motion": "zoom_out", "transition": "fade"},
+        {"layout": "title", "title": "End", "duration": 2, "background": {"type": "video", "asset": clip["id"]}, "look": "blur"},
+    ]
+    proj = video.validate_project(base_project(scenes=scenes, captions=True), assets)
+    out = tmp_path / "fx.mp4"
+    res = video.render_project(proj, out, assets, tts_fn=fake_tts)
+    info = ffprobe(out, "format=duration:stream=codec_type,width,height")
+    real = float(info["format"]["duration"])
+    assert abs(real - res["duration"]) < 0.25, (real, res["duration"])
+    # two xfades (0.7 s each) shorten the video
+    assert res["duration"] < sum([1.5, 3.5, 2.5, 2]) + 1.5
+    assert {s["codec_type"] for s in info["streams"]} == {"video", "audio"}
+    # captions of scene 2 start after scene 1 minus the transition overlap
+    assert res["srt"].count("-->") >= 1
+    png = video.render_preview_png(proj, 0, assets)
+    assert png[:4] == b"\x89PNG"
+
+
+def test_browser_recording_is_stored_as_mp3(tmp_path, assets):
+    src = tmp_path / "r.webm"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=duration=1.5", "-c:a", "libopus", "-f", "webm", str(src)], check=True)
+    meta = assets.save(src.read_bytes(), "voice-scene-1.weba")
+    assert meta["kind"] == "audio" and meta["name"].endswith(".mp3") and assets.path(meta["id"]).suffix == ".mp3"
+    assert 1.3 < video.probe_duration(assets.path(meta["id"])) < 1.8

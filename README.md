@@ -1,11 +1,17 @@
 # VoiceForge
 
+Text-to-speech, speech-to-text, an audio editor and an educational video studio in one web app (English and Arabic UI, five colour themes).
+
 Natural text-to-speech in **75 languages (Arabic first)** plus a **video studio** that turns scenes into a narrated MP4 with burned-in captions. One small Python package: a library, a CLI and a web app.
 
 - **Voice** — 322 Microsoft neural voices (male/female) via [`edge-tts`](https://github.com/rany2/edge-tts). Preview with a waveform, export MP3.
 - **Video** — scenes → slides (Pillow, correct Arabic/RTL shaping) + narration + captions → H.264/AAC MP4 (ffmpeg). Six aspect ratios (**16:9, 9:16, 1:1, 4:5, 4:3, 21:9**) × five resolutions (**480p, 720p HD, 1080p Full HD, 1440p 2K, 2160p 4K**); five content presets (lesson, explainer, short, course intro, quiz) in English and Arabic; insert images, videos and background music; SRT export.
 - **Translator** — translate pasted text into any supported language (Microsoft Edge translator, Google as fallback; no key), the voice switches automatically, with Undo.
-- **Import PDF / PowerPoint** — every page or slide becomes a scene on the timeline (full-screen, sharp up to 1440p); speaker notes or page text can become the narration. PowerPoint is converted pixel-exactly with LibreOffice when installed; otherwise `.pptx` becomes editable title/bullets/picture scenes.
+- **Speech to text** — live typing while you speak (browser speech recognition: Chrome, Edge, Safari), live waveform, editable transcript, TXT/SRT export, translate, send to text-to-speech. The Voice tab also has 🎤 dictation.
+- **Audio editor** — import/record, zoomable waveform, select + cut/copy/paste/delete/trim/silence, fades, normalize, gain, reverse, effects (voice enhance, hiss reduction, compressor, echo, reverb, radio, bass/treble, speed, pitch, robot), mix-in, undo/redo, export WAV/MP3, save to library.
+- **Video extras** — record your own voice-over per scene (with live captions), motion (Ken Burns zoom/pan) and looks (sepia, B&W, vintage, warm, cool, vivid, blur, vignette), 28 transitions (mirrored for right-to-left scenes), animated layers (pop, fade, slide, rise, float, pulse, spin), per-scene sound effects.
+- **Free media library** — 24 shapes in any colour, ~200 clip-art illustrations, 14 built-in sound effects, plus searchable real photos, illustrations, music and sound effects from Openverse (openly licensed, commercial use; attribution is stored with each file).
+- **Import PDF / PowerPoint / Word / Excel** — every page or slide becomes a scene on the timeline (full-screen, sharp up to 1440p); speaker notes or page text can become the narration. PowerPoint is converted pixel-exactly with LibreOffice when installed; otherwise `.pptx` becomes editable title/bullets/picture scenes.
 - **Projects** — save, open, duplicate, delete, "new project", autosave, and export/import a project as a zip bundle (with its media).
 - **UI** in English and Arabic (RTL), optional **Sign in with Google**.
 
@@ -39,6 +45,7 @@ The server needs outbound HTTPS access to Microsoft's speech service. `imageio-f
 | `COOKIE_SECURE=1` | Set when serving over HTTPS |
 | `ALLOWED_ORIGIN` | CORS origin for the API (default `*`) |
 | `VF_FONT_DIR` | Extra fonts for slides (see below) |
+| `OPENVERSE_API` | Online library endpoint (default `https://api.openverse.org/v1`) |
 | `VF_MAX_TEXT_CHARS` | Max characters per MP3 (default `100000`; `0` = unlimited). Long texts are chunked and run as background jobs |
 
 ## Library and CLI
@@ -83,6 +90,10 @@ The voice must match the language of the text. Arabic text with a French voice, 
 ## Fonts for slides
 
 Arabic, Latin, Cyrillic and Greek work with DejaVu Sans. Other scripts need a matching system font (the Docker image installs Noto fonts; build with `--build-arg INSTALL_CJK=1` for Chinese/Japanese/Korean). Narration works for every language regardless.
+
+## Build number
+
+Run `python scripts/stamp_build.py` on each deploy; it writes `build.json` (commit count, commit, Riyadh time) which the footer shows.
 
 ## Tests
 

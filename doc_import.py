@@ -26,7 +26,10 @@ DEFAULT_SECONDS = 5.0
 NARRATION_MODES = ("notes", "text", "none")
 PDF_EXT = {".pdf"}
 DECK_EXT = {".pptx", ".ppt", ".odp", ".key", ".pps", ".ppsx"}
-SUPPORTED = sorted(PDF_EXT | DECK_EXT)
+WORD_EXT = {".docx", ".doc", ".odt", ".rtf", ".txt"}
+SHEET_EXT = {".xlsx", ".xls", ".ods", ".csv"}
+OFFICE_EXT = DECK_EXT | WORD_EXT | SHEET_EXT          # converted to PDF pages with LibreOffice
+SUPPORTED = sorted(PDF_EXT | OFFICE_EXT)
 
 
 class ImportError_(video.VideoError):
@@ -183,8 +186,8 @@ def pptx_editable(data: bytes, max_pages: int):
 def import_document(data: bytes, filename: str, assets: "video.AssetStore", narration: str = "notes",
                     max_pages: int | None = None, keep_layout: bool = True) -> dict:
     ext = Path(filename or "").suffix.lower()
-    if ext not in PDF_EXT | DECK_EXT:
-        raise ImportError_("Unsupported file. Import a PDF or a PowerPoint (.pptx/.ppt) or .odp file.")
+    if ext not in PDF_EXT | OFFICE_EXT:
+        raise ImportError_("Unsupported file. Import a PDF, PowerPoint, Word or Excel file.")
     if not data:
         raise ImportError_("The file is empty.")
     if len(data) > MAX_DOC_BYTES:
@@ -197,15 +200,17 @@ def import_document(data: bytes, filename: str, assets: "video.AssetStore", narr
     stem = re.sub(r"[^\w\- ]+", "_", Path(filename).stem)[:40] or "slides"
 
     notes, titles, method = [], [], "pdf"
-    if ext in DECK_EXT:
+    if ext in OFFICE_EXT:
         if ext in (".pptx", ".ppsx"):
             notes, titles = pptx_notes_titles(data)
         if _soffice():
             pdf, method = deck_to_pdf(data, ext), "libreoffice"
         elif ext in (".pptx", ".ppsx"):
             return _editable_import(data, stem, assets, narration, max_pages, max_narr, max_title)
+        elif ext in (".docx", ".txt"):
+            return _text_import(data, ext, stem, narration, max_pages, max_narr, max_title)
         else:
-            raise ImportError_("Old .ppt/.odp files need LibreOffice on the server. Save it as .pptx or PDF and try again.")
+            raise ImportError_("This file type needs LibreOffice on the server. Save it as PDF (or .pptx / .docx) and try again.")
     else:
         pdf = data
 
@@ -273,3 +278,57 @@ def _editable_import(data, stem, assets, narration, max_pages, max_narr, max_tit
             assets.delete(m["id"])
         raise
     return {"scenes": scenes, "assets": saved, "pages": total, "imported": len(scenes), "method": "editable"}
+
+
+def docx_blocks(data: bytes) -> list[tuple[str, str]]:
+    """Minimal .docx reader (no LibreOffice): -> [(style, text)] for each paragraph."""
+    import zipfile
+    from xml.etree import ElementTree as ET
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            root = ET.fromstring(z.read("word/document.xml"))
+    except Exception as exc:  # noqa: BLE001
+        raise ImportError_("That Word file could not be opened.") from exc
+    out = []
+    for p in root.iter(W + "p"):
+        style = p.find(f"{W}pPr/{W}pStyle")
+        st = (style.get(W + "val") if style is not None else "") or ""
+        text = "".join(t.text or "" for t in p.iter(W + "t")).strip()
+        if text:
+            out.append((st, text))
+    return out
+
+
+def _text_import(data, ext, stem, narration, max_pages, max_narr, max_title):
+    """Word/text without LibreOffice: every heading starts a new scene; paragraphs become bullets + narration."""
+    if ext == ".txt":
+        text = data.decode("utf-8", "replace")
+        blocks = []
+        for para in re.split(r"\n\s*\n", text):
+            lines = [x.strip() for x in para.strip().splitlines() if x.strip()]
+            if lines:
+                blocks.append(("Heading1" if len(lines) == 1 and len(lines[0]) < 80 else "", lines[0]))
+                blocks += [("", x) for x in lines[1:]]
+    else:
+        blocks = docx_blocks(data)
+    if not blocks:
+        raise ImportError_("No text found in that document.")
+    groups, cur = [], None
+    for st, text in blocks:
+        heading = bool(re.match(r"(?i)(heading|title|\u0639\u0646\u0648\u0627\u0646)", st))
+        if heading or cur is None:
+            cur = {"title": text if heading else "", "lines": [] if heading else [text]}
+            groups.append(cur)
+        else:
+            cur["lines"].append(text)
+    scenes = []
+    for g in groups[:max_pages]:
+        body = _clean("\n".join(g["lines"][:8]), video.LIMITS["max_body"])
+        narr = _clean(" ".join([g["title"]] + g["lines"]) if narration != "none" else "", max_narr)
+        layout = "bullets" if len(g["lines"]) > 1 and all(len(x) < 140 for x in g["lines"][:8]) else ("text" if body else "title")
+        scenes.append({"layout": layout, "title": _clean(g["title"], max_title), "body": body if layout != "title" else "",
+                       "narration": narr, "background": {"type": "theme"}, "media": None,
+                       "duration": None if narr else DEFAULT_SECONDS, "transition": "fade",
+                       "label": _clean(g["title"], max_title) or f"{stem} {len(scenes) + 1}"})
+    return {"scenes": scenes, "assets": [], "pages": len(groups), "imported": len(scenes), "method": "text"}

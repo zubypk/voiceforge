@@ -12,6 +12,7 @@ Environment:
 from __future__ import annotations
 
 import hashlib
+import json
 import io
 import os
 import secrets
@@ -21,6 +22,7 @@ from pathlib import Path
 from flask import Flask, g, jsonify, render_template, request, send_file, session
 
 import doc_import
+import library
 import projects as projects_mod
 import translate as translate_mod
 import tts_module as tts
@@ -104,9 +106,22 @@ def healthz():
     return jsonify(ok=True)
 
 
+def _build_info() -> dict:
+    """build.json is written at deploy time by scripts/stamp_build.py (build number + Riyadh time)."""
+    try:
+        return json.loads(Path(__file__).with_name("build.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        import datetime as dt
+        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=3)))
+        return {"build": "dev", "commit": None, "time": now.isoformat(timespec="minutes"), "display": now.strftime("%d %b %Y, %H:%M")}
+
+
+BUILD = _build_info()
+
+
 @app.get("/api/config")
 def api_config():
-    return jsonify(google_client_id=GOOGLE_CLIENT_ID or None, require_login=REQUIRE_LOGIN)
+    return jsonify(google_client_id=GOOGLE_CLIENT_ID or None, require_login=REQUIRE_LOGIN, build=BUILD)
 
 
 @app.get("/api/me")
@@ -201,6 +216,32 @@ def api_export():
     except (tts.TTSError, tts.TTSUnavailable, ValueError) as exc:
         return _error(exc)
     return send_file(io.BytesIO(mp3), mimetype="audio/mpeg", as_attachment=True, download_name="speech.mp3")
+
+
+@app.post("/api/audio/convert")
+def api_audio_convert():
+    """Audio editor export: uploaded WAV/any audio -> MP3 (or WAV). multipart: file, format=mp3|wav."""
+    if (gate := _login_gate()):
+        return gate
+    f = request.files.get("file")
+    fmt = request.form.get("format", "mp3")
+    if not f or fmt not in ("mp3", "wav"):
+        return jsonify(error="Send an audio file and format=mp3 or wav."), 400
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory(dir=DATA_DIR) as td:
+        src, out = Path(td) / "in", Path(td) / f"out.{fmt}"
+        f.save(src)
+        if src.stat().st_size > 200 * 1024 * 1024:
+            return jsonify(error="Audio is too large (limit 200 MB)."), 413
+        codec = ["-codec:a", "libmp3lame", "-b:a", "192k"] if fmt == "mp3" else ["-codec:a", "pcm_s16le"]
+        proc = subprocess.run([video.ffmpeg_bin(), "-y", "-loglevel", "error", "-i", str(src), "-vn", *codec, str(out)],
+                              capture_output=True, text=True, timeout=600)
+        if proc.returncode or not out.exists():
+            return jsonify(error="That audio could not be converted."), 400
+        data = out.read_bytes()
+    return send_file(io.BytesIO(data), mimetype="audio/mpeg" if fmt == "mp3" else "audio/wav",
+                     as_attachment=True, download_name=f"audio.{fmt}")
 
 
 @app.post("/api/tts/jobs")
@@ -303,6 +344,87 @@ def api_video_import():
         _import_lock.release()
 
 
+# ---------------------------------------------------------------- media library
+
+@app.get("/api/library")
+def api_library():
+    return jsonify(shapes=list(library.SHAPES), clipart=library.clipart_catalog(),
+                   sfx=[{"name": k, "label": v[0], "seconds": v[2]} for k, v in library.SFX.items()],
+                   music_topics=library.MUSIC_TOPICS, sfx_topics=library.SFX_TOPICS, image_topics=library.IMAGE_TOPICS)
+
+
+@app.get("/api/library/shape/<name>.png")
+def api_library_shape_preview(name):
+    try:
+        png = library.make_shape(name, request.args.get("color", "#ffc857"), size=160)
+    except video.VideoError as exc:
+        return _error(exc)
+    return send_file(io.BytesIO(png), mimetype="image/png", max_age=3600)
+
+
+@app.post("/api/library/shape")
+def api_library_shape():
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        png = library.make_shape(str(data.get("name", "")), str(data.get("color", "#ffc857")))
+        return jsonify(_assets().save(png, f"shape-{data.get('name')}.png"))
+    except video.VideoError as exc:
+        return _error(exc)
+
+
+@app.post("/api/library/clipart")
+def api_library_clipart():
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(_assets().save(library.make_emoji(str(data.get("char", ""))), "clipart.png"))
+    except video.VideoError as exc:
+        return _error(exc)
+
+
+@app.get("/api/library/sfx/<name>.mp3")
+def api_library_sfx_file(name):
+    try:
+        return send_file(library.sfx_file(name, DATA_DIR / "library" / "sfx"), mimetype="audio/mpeg", max_age=86400)
+    except video.VideoError as exc:
+        return _error(exc)
+
+
+@app.post("/api/library/sfx/<name>")
+def api_library_sfx_add(name):
+    if (gate := _login_gate()):
+        return gate
+    try:
+        path = library.sfx_file(name, DATA_DIR / "library" / "sfx")
+        meta = _assets().save(path.read_bytes(), f"sfx-{name}.mp3")
+        return jsonify(_assets().annotate(meta["id"], name=library.SFX[name][0] + ".mp3"))
+    except video.VideoError as exc:
+        return _error(exc)
+
+
+@app.get("/api/library/search")
+def api_library_search():
+    try:
+        return jsonify(library.search(request.args.get("kind", "audio"), request.args.get("q", ""),
+                                      request.args.get("category"), int(request.args.get("page", 1) or 1)))
+    except (video.VideoError, ValueError) as exc:
+        return _error(exc)
+
+
+@app.post("/api/library/import")
+def api_library_import():
+    if (gate := _login_gate()):
+        return gate
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(library.import_item(str(data.get("kind", "")), str(data.get("id", "")), _assets()))
+    except video.VideoError as exc:
+        return _error(exc)
+
+
 @app.get("/api/assets")
 def api_assets_list():
     store = _assets()
@@ -355,7 +477,7 @@ def api_video_preview():
         # Only the selected scene is validated, so other unfinished scenes never block the preview.
         assets = _assets()
         project = video.validate_project({**raw, "scenes": [scenes[index]]}, assets, allow_empty=True)
-        png = video.render_preview_png(project, 0, assets)
+        png = video.render_preview_png(project, 0, assets, stickers=data.get("stickers", True) is not False)
     except (video.VideoError, ValueError) as exc:
         return _error(exc)
     return send_file(io.BytesIO(png), mimetype="image/png")

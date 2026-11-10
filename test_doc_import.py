@@ -65,7 +65,7 @@ def test_old_ppt_without_libreoffice_is_clear_error(store, monkeypatch):
         doc_import.import_document(b"xx", "old.ppt", store)
 
 
-@pytest.mark.parametrize("name,data,msg", [("a.docx", b"x", "Unsupported"), ("a.pdf", b"", "empty"), ("a.pdf", b"not a pdf", "could not")])
+@pytest.mark.parametrize("name,data,msg", [("a.exe", b"x", "Unsupported"), ("a.pdf", b"", "empty"), ("a.pdf", b"not a pdf", "could not")])
 def test_bad_inputs(store, name, data, msg):
     with pytest.raises(video.VideoError, match=msg):
         doc_import.import_document(data, name, store)
@@ -81,5 +81,25 @@ def test_import_endpoint(tmp_path, monkeypatch):
     assert j["imported"] == 3
     assert c.get(f"/api/assets/{j['assets'][0]['id']}/thumb").status_code == 200
     assert "pdf" in "".join(c.get("/api/video/config").get_json()["import_formats"])
-    bad = c.post("/api/video/import", data={"file": (io.BytesIO(b"x"), "a.txt")}, content_type="multipart/form-data")
+    bad = c.post("/api/video/import", data={"file": (io.BytesIO(b"x"), "a.exe")}, content_type="multipart/form-data")
     assert bad.status_code == 400
+
+
+@pytest.mark.skipif(not doc_import._soffice(), reason="LibreOffice not installed")
+@pytest.mark.parametrize("name", ["lesson.docx", "marks.xlsx"])
+def test_word_and_excel_via_libreoffice(store, name):
+    res = doc_import.import_document((FIX / name).read_bytes(), name, store, narration="text")
+    assert res["method"] == "libreoffice" and res["imported"] >= 1
+    assert res["scenes"][0]["media"]["position"] == "full"
+
+
+def test_docx_without_libreoffice_becomes_text_scenes(store, monkeypatch):
+    monkeypatch.setattr(doc_import, "_soffice", lambda: None)
+    res = doc_import.import_document((FIX / "lesson.docx").read_bytes(), "lesson.docx", store)
+    titles = [s["title"] for s in res["scenes"]]
+    assert res["method"] == "text" and "Water cycle" in titles and "دورة الماء" in titles
+    water = res["scenes"][titles.index("Water cycle")]
+    assert water["layout"] == "bullets" and water["body"].split("\n") == ["Evaporation", "Condensation", "Rain"]
+    video.validate_project({"scenes": res["scenes"]}, store)
+    with pytest.raises(video.VideoError, match="LibreOffice"):
+        doc_import.import_document((FIX / "marks.xlsx").read_bytes(), "marks.xlsx", store)

@@ -230,7 +230,7 @@ const V = { project: null, name: "", serverId: null, dirty: false, savedAt: null
   timers: { local: null, server: null, prev: null, job: null }, prevUrl: null, prevSeq: 0, saving: false };
 
 const newScene = (o = {}) => ({ layout: "title", title: "", body: "", narration: "", background: { type: "theme", color: "#1d4e9e", asset: null, assetName: "" },
-  media: null, duration: null, transition: "fade", ...o });
+  media: null, duration: null, transition: "fade", motion: "none", look: "none", voiceover: null, sfx: null, stickers: [], ...o });
 const defaultProject = () => ({ ratio: "16:9", resolution: "1080", theme: "academy", captions: true,
   voice: { lang: "ar-SA", gender: "female", voice: "", rate: 0, pitch: 0 }, music: null, scenes: [newScene()] });
 
@@ -256,7 +256,10 @@ function projectPayload() {
     scenes: p.scenes.map((s) => ({ layout: s.layout, title: s.title, body: s.body, narration: s.narration,
       background: { type: s.background.type, color: s.background.color, asset: s.background.asset },
       media: s.media && s.media.asset ? { asset: s.media.asset, position: s.media.position, fit: s.media.fit } : null,
-      duration: s.duration, transition: s.transition })) };
+      duration: s.duration, transition: s.transition, motion: s.motion || "none", look: s.look || "none",
+      voiceover: s.voiceover && s.voiceover.asset ? { asset: s.voiceover.asset } : null,
+      sfx: s.sfx && s.sfx.asset ? { asset: s.sfx.asset, at: s.sfx.at || 0, volume: s.sfx.volume == null ? 0.8 : s.sfx.volume } : null,
+      stickers: (s.stickers || []).map((k) => ({ asset: k.asset, x: k.x, y: k.y, w: k.w, anim: k.anim, start: k.start || 0 })) })) };
 }
 
 /* ---- saving: local draft always, server copy when the project has been saved ---- */
@@ -473,7 +476,7 @@ function loadSceneFields() {
   $("sBgType").value = s.background.type; $("sDur").value = s.duration == null ? "" : s.duration; $("sTrans").value = s.transition;
   $("narrCount").textContent = tf("narr_chars", s.narration.length);
   $("sUp").disabled = V.sel === 0; $("sDown").disabled = V.sel === V.project.scenes.length - 1; $("sDel").disabled = V.project.scenes.length === 1;
-  renderMediaBox(); renderBgExtra(); updateNarrWarnings();
+  renderMediaBox(); renderBgExtra(); updateNarrWarnings(); fire("scene");
 }
 function renderMediaBox() {
   const s = sceneAt(), show = MEDIA_LAYOUTS.includes(s.layout); $("mediaBox").style.display = show ? "block" : "none"; if (!show) return;
@@ -512,7 +515,7 @@ $("sBgType").onchange = (e) => { sceneAt().background.type = e.target.value; ren
 $("importDoc").onclick = () => {
   const box = document.createElement("div");
   box.innerHTML = `<p class="hint" data-r="intro"></p>
-    <input type="file" data-r="file" accept=".pdf,.pptx,.ppsx,.ppt,.odp" style="width:100%;margin:8px 0">
+    <input type="file" data-r="file" accept=".pdf,.pptx,.ppsx,.ppt,.odp,.docx,.doc,.odt,.rtf,.txt,.xlsx,.xls,.ods,.csv" style="width:100%;margin:8px 0">
     <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div><label data-r="l_narr"></label><select data-r="narr"><option value="notes"></option><option value="text"></option><option value="none"></option></select></div>
       <div><label data-r="l_where"></label><select data-r="where"><option value="after"></option><option value="end"></option><option value="replace"></option></select></div>
@@ -577,7 +580,7 @@ async function refreshPreview() {
   if (["image", "video"].includes(s.background.type) && !s.background.asset) { $("prevNote").textContent = t("need_upload"); return; }
   const seq = ++V.prevSeq; $("prevNote").textContent = t("prev_loading");
   try {
-    const blob = await (await postJson("/api/video/preview", { project: projectPayload(), index: V.sel })).blob(); if (seq !== V.prevSeq) return;
+    const blob = await (await postJson("/api/video/preview", { project: projectPayload(), index: V.sel, stickers: false })).blob(); if (seq !== V.prevSeq) return;
     if (V.prevUrl) URL.revokeObjectURL(V.prevUrl); V.prevUrl = URL.createObjectURL(blob); $("scenePreview").src = V.prevUrl; $("prevNote").textContent = "";
   } catch (e) { if (seq === V.prevSeq) $("prevNote").textContent = t("prev_fail") + e.message; }
 }
@@ -627,14 +630,18 @@ function applyUI(lang) {
   if (statusKey) setStatus(t(statusKey), statusKey === "prev_ok" ? "ok" : "");
   drawWave(audioProgress());
   if (cfg && V.project) { renderPresetCards(); renderRatios(); renderResolutions(); renderThemes(); renderMusic(); renderSceneList(); loadSceneFields(); updateProjStatus(); if (V.status) setVStatus(t(V.status.key), V.status.cls); }
-  updateTextWarn();
+  updateTextWarn(); fire("ui");
 }
+const VIEWS = ["voice", "video", "stt", "audio"];
+const cap1 = (v) => v[0].toUpperCase() + v.slice(1);
 function showView(v) {
-  const video = v === "video"; $("viewVoice").classList.toggle("on", !video); $("viewVideo").classList.toggle("on", video);
-  $("tabVoice").classList.toggle("on", !video); $("tabVideo").classList.toggle("on", video);
-  if (video) refreshPreview(); else drawWave(audioProgress()); try { history.replaceState(null, "", video ? "#video" : "#voice"); } catch (_) {}
+  if (!VIEWS.includes(v)) v = "voice";
+  VIEWS.forEach((k) => { const view = $("view" + cap1(k)), tab = $("tab" + cap1(k)); if (view) view.classList.toggle("on", k === v); if (tab) tab.classList.toggle("on", k === v); });
+  if (v === "video") refreshPreview(); else if (v === "voice") drawWave(audioProgress());
+  try { history.replaceState(null, "", "#" + v); } catch (_) {}
+  fire("view", v);
 }
-$("tabVoice").onclick = () => showView("voice"); $("tabVideo").onclick = () => showView("video");
+VIEWS.forEach((k) => { const tab = $("tab" + cap1(k)); if (tab) tab.onclick = () => showView(k); });
 document.querySelectorAll("[data-go]").forEach((a) => a.addEventListener("click", () => showView(a.dataset.go)));
 $("langBtn").onclick = () => applyUI(ui === "en" ? "ar" : "en");
 
@@ -665,7 +672,17 @@ async function init() {
   $("voiceTable").innerHTML = Object.values(rows).map((r) => `<tr><td>${r.label}</td><td>${r.male.join(", ") || "—"}</td><td>${r.female.join(", ") || "—"}</td></tr>`).join("");
   await loadAssets();
   const draft = loadLocal(); if (draft) { V.project = migrate(draft.project); V.name = draft.name || ""; V.serverId = draft.serverId || null; } else V.project = defaultProject();
-  $("pName").value = V.name; refreshVideoUI(); applyUI("en"); initAuth(); showView(location.hash === "#video" ? "video" : "voice");
+  $("pName").value = V.name; refreshVideoUI(); applyUI("en"); initAuth(); showView((location.hash || "#voice").slice(1)); fire("ready");
 }
+const hooks = {};
+function fire(name, arg) { (hooks[name] || []).forEach((fn) => { try { fn(arg); } catch (e) { console.error(e); } }); }
+window.VF = {
+  $, t, tf, api, postJson, toast, openModal, closeModal, pickAsset, loadAssets, uploadFiles, sceneAt, markDirty, schedulePreview,
+  refreshVideoUI, renderMusic, loadSceneFields, showView, langLabel, fillLanguages, sampleFor, fmtBytes, renderSceneList,
+  get V() { return V; }, get cfg() { return cfg; }, get catalog() { return catalog; }, get ui() { return ui; },
+  get voiceLang() { return els.language.value; }, voiceText: (v) => { if (v === undefined) return els.text.value; els.text.value = v; els.text.dispatchEvent(new Event("input")); },
+  setVoiceLang: (code) => { els.language.value = code; els.language.dispatchEvent(new Event("change")); },
+  on: (name, fn) => (hooks[name] = hooks[name] || []).push(fn),
+};
 init().catch((e) => setStatus("Could not load: " + e.message, "err"));
 })();

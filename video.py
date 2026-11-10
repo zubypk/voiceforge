@@ -81,8 +81,27 @@ THEMES = {
 LAYOUTS = ("title", "bullets", "text", "quote", "media")
 MEDIA_POSITIONS = ("auto", "left", "right", "top", "bottom", "full")
 MEDIA_FITS = ("contain", "cover")
-TRANSITIONS = ("fade", "none")
 FPS = 30
+
+# Transition from a scene into the next one. "fade" = dip to black inside the scene, "none" = hard cut,
+# everything else is an ffmpeg xfade between the two scenes (left/right are mirrored for RTL scenes).
+XFADE = {
+    "crossfade": "fade", "dissolve": "dissolve", "fadeblack": "fadeblack", "fadewhite": "fadewhite",
+    "wipeleft": "wipeleft", "wiperight": "wiperight", "wipeup": "wipeup", "wipedown": "wipedown",
+    "slideleft": "slideleft", "slideright": "slideright", "slideup": "slideup", "slidedown": "slidedown",
+    "smoothleft": "smoothleft", "smoothright": "smoothright", "coverleft": "coverleft", "revealleft": "revealleft",
+    "circleopen": "circleopen", "circleclose": "circleclose", "radial": "radial", "zoomin": "zoomin",
+    "pixelize": "pixelize", "diagtl": "diagtl", "hblur": "hblur", "squeezeh": "squeezeh",
+    "vertopen": "vertopen", "horzopen": "horzopen", "hlslice": "hlslice", "fadegrays": "fadegrays",
+}
+TRANSITIONS = ("fade", "none") + tuple(XFADE)
+_MIRROR = {"left": "right", "right": "left", "tl": "tr", "tr": "tl", "hl": "hr", "hr": "hl"}
+XFADE_SECONDS = 0.7
+
+MOTIONS = ("none", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up")
+LOOKS = ("none", "grayscale", "sepia", "vintage", "warm", "cool", "vivid", "blur", "vignette", "dark")
+STICKER_ANIMS = ("none", "fade", "slide", "rise", "pop", "float", "pulse", "spin")
+MAX_STICKERS = 10
 
 
 def _limits() -> dict:
@@ -654,7 +673,8 @@ class AssetStore:
 
     IMAGE_EXT = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp"}
     VIDEO_EXT = {".mp4": "mp4", ".mov": "mov", ".webm": "webm", ".m4v": "mp4"}
-    AUDIO_EXT = {".mp3": "mp3", ".wav": "wav", ".m4a": "m4a", ".aac": "aac", ".ogg": "ogg", ".flac": "flac"}
+    AUDIO_EXT = {".mp3": "mp3", ".wav": "wav", ".m4a": "m4a", ".aac": "aac", ".ogg": "ogg", ".flac": "flac",
+                 ".weba": "weba", ".opus": "opus", ".oga": "oga"}   # .weba/.opus = browser microphone recordings
 
     def __init__(self, root: Path):
         self.root = Path(root)
@@ -680,7 +700,7 @@ class AssetStore:
             return json.loads((self.root / f"{asset_id}.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             ext = p.suffix.lower().lstrip(".")
-            kind = "video" if ext in ("mp4", "mov", "webm") else "audio" if ext in ("mp3", "wav", "m4a", "aac", "ogg", "flac") else "image"
+            kind = "video" if ext in ("mp4", "mov", "webm") else "audio" if ext in ("mp3", "wav", "m4a", "aac", "ogg", "flac", "weba", "opus", "oga") else "image"
             return {"id": asset_id, "kind": kind, "name": p.name, "bytes": p.stat().st_size, "created": p.stat().st_mtime}
 
     def kind(self, asset_id: str) -> str | None:
@@ -714,12 +734,24 @@ class AssetStore:
         if self.total_bytes() + len(data) > LIMITS["owner_quota_bytes"]:
             raise VideoError("Your storage is full. Delete some uploads first.")
         asset_id = uuid.uuid4().hex
+        nbytes = len(data)
         if ext in self.VIDEO_EXT or ext in self.AUDIO_EXT:
             is_video = ext in self.VIDEO_EXT
             if len(data) > (LIMITS["max_video_bytes"] if is_video else LIMITS["max_audio_bytes"]):
                 raise VideoError("Video is too large." if is_video else "Audio file is too large.")
             dest = self.root / f"{asset_id}.{(self.VIDEO_EXT if is_video else self.AUDIO_EXT)[ext]}"
             dest.write_bytes(data)
+            if not is_video and ext in (".weba", ".opus", ".oga"):
+                # browser microphone recordings (WebM/Ogg Opus) have no duration header: store them as MP3
+                mp3 = self.root / f"{asset_id}.mp3"
+                conv = _run([ffmpeg_bin(), "-y", "-loglevel", "error", "-i", str(dest), "-vn", "-codec:a", "libmp3lame",
+                             "-b:a", "160k", "-ar", "44100", str(mp3)], 300)
+                dest.unlink(missing_ok=True)
+                if conv.returncode or not mp3.exists():
+                    mp3.unlink(missing_ok=True)
+                    raise VideoError("That recording could not be read. Try recording again.")
+                dest, name = mp3, Path(name).with_suffix(".mp3").name
+                nbytes = mp3.stat().st_size
             proc = _run([ffmpeg_bin(), "-hide_banner", "-i", str(dest)], 60)
             has = ("Video:" if is_video else "Audio:") in proc.stderr
             if not has or not re.search(r"Duration:\s*\d", proc.stderr):
@@ -739,7 +771,16 @@ class AssetStore:
                 raise VideoError("Unsupported image format. Use PNG, JPG or WEBP.")
             (self.root / f"{asset_id}.{self.IMAGE_EXT[fmt]}").write_bytes(data)
             kind = "image"
-        meta = {"id": asset_id, "kind": kind, "name": name, "bytes": len(data), "created": time.time()}
+        meta = {"id": asset_id, "kind": kind, "name": name, "bytes": nbytes, "created": time.time()}
+        (self.root / f"{asset_id}.json").write_text(json.dumps(meta), encoding="utf-8")
+        return meta
+
+    def annotate(self, asset_id: str, **extra) -> dict:
+        """Store extra metadata (e.g. licence/attribution of library media) next to an asset."""
+        meta = self.meta(asset_id)
+        if not meta:
+            raise VideoError("Asset not found.")
+        meta.update({k: v for k, v in extra.items() if v is not None})
         (self.root / f"{asset_id}.json").write_text(json.dumps(meta), encoding="utf-8")
         return meta
 
@@ -787,6 +828,14 @@ def _text(v, limit: int, name: str) -> str:
     if len(v) > limit:
         raise VideoError(f"{name} is too long (limit {limit:,} characters).")
     return v
+
+
+def _num(v, default: float, lo: float, hi: float) -> float:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return default
+    return default if f != f else min(hi, max(lo, f))
 
 
 def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: bool = False) -> dict:
@@ -879,10 +928,34 @@ def validate_project(raw: dict, assets: AssetStore | None = None, allow_empty: b
                 raise VideoError(f"Scene {i}: duration must be between {L['min_scene_seconds']:g} and {L['max_scene_seconds']:g} seconds.")
         narration = _text(s.get("narration"), L["max_narration"], f"Scene {i} narration")
         total_narr += len(narration)
+        motion = s.get("motion", "none") if s.get("motion") in MOTIONS else "none"
+        look = s.get("look", "none") if s.get("look") in LOOKS else "none"
+        vo = None
+        if (s.get("voiceover") or {}).get("asset"):
+            if assets is None or assets.kind(s["voiceover"]["asset"]) != "audio":
+                raise VideoError(f"Scene {i}: the recorded voice-over was not found. Record it again.")
+            vo = {"asset": s["voiceover"]["asset"]}
+        sfx = None
+        if (s.get("sfx") or {}).get("asset"):
+            if assets is None or assets.kind(s["sfx"]["asset"]) != "audio":
+                raise VideoError(f"Scene {i}: the sound effect was not found.")
+            sfx = {"asset": s["sfx"]["asset"], "at": _num(s["sfx"].get("at"), 0.0, 0.0, 600.0),
+                   "volume": _num(s["sfx"].get("volume"), 0.8, 0.0, 2.0)}
+        stickers = []
+        for k in (s.get("stickers") or [])[:MAX_STICKERS]:
+            if not isinstance(k, dict) or not k.get("asset"):
+                continue
+            if assets is None or assets.kind(k["asset"]) != "image":
+                raise VideoError(f"Scene {i}: a sticker/clip-art image was not found.")
+            stickers.append({"asset": k["asset"], "x": _num(k.get("x"), 0.5, 0.0, 1.0), "y": _num(k.get("y"), 0.5, 0.0, 1.0),
+                             "w": _num(k.get("w"), 0.2, 0.02, 1.0), "start": _num(k.get("start"), 0.0, 0.0, 600.0),
+                             "anim": k.get("anim") if k.get("anim") in STICKER_ANIMS else "pop"})
         scene = {"layout": layout, "title": _text(s.get("title"), L["max_title"], f"Scene {i} title"),
                  "body": _text(s.get("body"), L["max_body"], f"Scene {i} text"), "narration": narration,
-                 "background": bg, "media": media, "duration": dur, "transition": transition}
-        if not allow_empty and not (scene["title"] or scene["body"] or narration or media):
+                 "background": bg, "media": media, "duration": dur, "transition": transition,
+                 "motion": motion, "look": look, "voiceover": vo, "sfx": sfx, "stickers": stickers}
+        if not allow_empty and not (scene["title"] or scene["body"] or narration or media or vo or stickers
+                                    or bg_type in ("image", "video")):
             raise VideoError(f"Scene {i} is empty.")
         scenes.append(scene)
     if total_narr > L["max_total_narration"]:
@@ -897,7 +970,8 @@ def canvas_size(project: dict) -> tuple[int, int]:
 
 # ----------------------------------------------------------------------------- preview
 
-def render_preview_png(project: dict, index: int, assets: AssetStore | None, max_width: int = 960) -> bytes:
+def render_preview_png(project: dict, index: int, assets: AssetStore | None, max_width: int = 960,
+                       stickers: bool = True) -> bytes:
     import io
 
     scene = project["scenes"][index]
@@ -918,11 +992,16 @@ def render_preview_png(project: dict, index: int, assets: AssetStore | None, max
             if path:
                 with Image.open(path) as im:
                     media_img = im.convert("RGB")
-        frame = base_frame(project, scene, size, assets, bg_still).convert("RGBA")
+        frame = look_pil(base_frame(project, scene, size, assets, bg_still), scene.get("look", "none")).convert("RGBA")
         cap = None
         if project["captions"] and scene["narration"]:
             cap = (split_captions(scene["narration"]) or [""])[0]
         frame.alpha_composite(render_overlay(project, scene, size, cap, scene["background"]["type"] in ("image", "video"), media_img))
+        if stickers:
+            for st in scene.get("stickers") or []:
+                img = sticker_image(assets, st, size[0])
+                if img is not None:
+                    frame.paste(img, sticker_box(st, img, size), img)
         buf = io.BytesIO()
         frame.convert("RGB").save(buf, "PNG")
         return buf.getvalue()
@@ -945,9 +1024,142 @@ def _video_overlay_filter(rect: tuple, fit: str, in_label: str, base_label: str,
             f"[{base_label}][mv{src_idx}]overlay=x={x}+({rw}-overlay_w)/2:y={y}+({rh}-overlay_h)/2[{out_label}]")
 
 
+def _motion_filter(motion: str, w: int, h: int, dur: float) -> str:
+    d = max(dur, 0.1)
+    if motion == "zoom_in":
+        return f"scale=w='trunc({w}*(1+0.12*t/{d:.3f})/2)*2':h=-2:eval=frame,crop={w}:{h}"
+    if motion == "zoom_out":
+        return f"scale=w='trunc({w}*(1.12-0.12*t/{d:.3f})/2)*2':h=-2:eval=frame,crop={w}:{h}"
+    big_w, big_h = (int(w * 1.18) // 2) * 2, (int(h * 1.18) // 2) * 2
+    if motion == "pan_left":
+        return f"scale={big_w}:{big_h},crop={w}:{h}:x='(iw-ow)*(1-t/{d:.3f})':y='(ih-oh)/2'"
+    if motion == "pan_right":
+        return f"scale={big_w}:{big_h},crop={w}:{h}:x='(iw-ow)*t/{d:.3f}':y='(ih-oh)/2'"
+    if motion == "pan_up":
+        return f"scale={big_w}:{big_h},crop={w}:{h}:x='(iw-ow)/2':y='(ih-oh)*(1-t/{d:.3f})'"
+    return ""
+
+
+_LOOK_FILTERS = {
+    "grayscale": "hue=s=0",
+    "sepia": "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131",
+    "vintage": "curves=preset=vintage",
+    "warm": "colorbalance=rs=.10:gs=.03:bs=-.10:rm=.06:bm=-.06",
+    "cool": "colorbalance=rs=-.08:bs=.10:rm=-.04:bm=.08",
+    "vivid": "eq=saturation=1.4:contrast=1.06",
+    "blur": "gblur=sigma=12",
+    "vignette": "vignette=angle=PI/4",
+    "dark": "eq=brightness=-0.12:saturation=0.9",
+}
+
+
+def _look_filter(look: str) -> str:
+    return _LOOK_FILTERS.get(look, "")
+
+
+def look_pil(img: Image.Image, look: str) -> Image.Image:
+    """Approximate the ffmpeg look for the still preview."""
+    from PIL import ImageEnhance, ImageFilter, ImageOps
+
+    img = img.convert("RGB")
+    if look == "grayscale":
+        return ImageOps.grayscale(img).convert("RGB")
+    if look in ("sepia", "vintage"):
+        g = ImageOps.grayscale(img)
+        out = ImageOps.colorize(g, "#2e1f0f", "#f3e2c0")
+        return Image.blend(img, out, 0.85 if look == "sepia" else 0.55)
+    if look == "vivid":
+        return ImageEnhance.Contrast(ImageEnhance.Color(img).enhance(1.4)).enhance(1.06)
+    if look == "blur":
+        return img.filter(ImageFilter.GaussianBlur(max(2, img.width / 160)))
+    if look == "dark":
+        return ImageEnhance.Brightness(img).enhance(0.8)
+    if look in ("warm", "cool"):
+        r, g, b = img.split()
+        k = 1.1 if look == "warm" else 0.92
+        r = r.point(lambda v: min(255, int(v * k)))
+        b = b.point(lambda v: min(255, int(v / k)))
+        return Image.merge("RGB", (r, g, b))
+    if look == "vignette":
+        w, h = img.size
+        mask = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(mask).ellipse((-w * 0.25, -h * 0.25, w * 1.25, h * 1.25), fill=255)
+        mask = mask.filter(ImageFilter.GaussianBlur(min(w, h) / 6))
+        return Image.composite(img, Image.new("RGB", (w, h), (0, 0, 0)), mask)
+    return img
+
+
+def scene_is_rtl(scene: dict) -> bool:
+    return is_rtl(scene.get("title") or scene.get("body") or scene.get("narration") or "")
+
+
+def xfade_name(transition: str, rtl: bool) -> str | None:
+    name = XFADE.get(transition)
+    if not name or not rtl:
+        return name
+    for a, b in _MIRROR.items():
+        if name.endswith(a):
+            return name[: -len(a)] + b
+    return name
+
+
+def sticker_image(assets: "AssetStore", sticker: dict, frame_w: int) -> Image.Image | None:
+    p = assets.path(sticker["asset"]) if assets else None
+    if not p:
+        return None
+    with Image.open(p) as im:
+        im = im.convert("RGBA")
+        sw = max(2, round(sticker["w"] * frame_w / 2) * 2)
+        sh = max(2, round(im.height * sw / im.width / 2) * 2)
+        return im.resize((sw, sh), Image.LANCZOS)
+
+
+def sticker_box(sticker: dict, img: Image.Image, size: tuple[int, int]) -> tuple[int, int]:
+    w, h = size
+    return round(sticker["x"] * w - img.width / 2), round(sticker["y"] * h - img.height / 2)
+
+
+def _sticker_filter(idx: int, st: dict, sw: int, sh: int, x: int, y: int, size: tuple[int, int], rtl: bool,
+                    base: str, out: str) -> str:
+    w, h = size
+    S = f"{st['start']:.3f}"
+    p = f"min(1,max(0,(t-{S})/0.6))"
+    ease = f"(1-pow(1-{p},3))"
+    src = f"[{idx}:v]format=rgba"
+    xs, ys = str(x), str(y)
+    anim = st["anim"]
+    if anim == "fade":
+        src += f",fade=t=in:st={S}:d=0.5:alpha=1"
+    elif anim == "slide":
+        off = int(w * 0.3) * (1 if rtl else -1)
+        src += f",fade=t=in:st={S}:d=0.4:alpha=1"
+        xs = f"'{x}+({off})*(1-{ease})'"
+    elif anim == "rise":
+        src += f",fade=t=in:st={S}:d=0.4:alpha=1"
+        ys = f"'{y}+{int(h * 0.15)}*(1-{ease})'"
+    elif anim == "pop":
+        q = f"min(1,max(0.02,(t-{S})/0.4))"
+        src += f",scale=w='max(2,trunc({sw}*{q}*(1+0.18*sin(PI*{q}))/2)*2)':h=-2:eval=frame"
+        xs, ys = f"'{x}+({sw}-overlay_w)/2'", f"'{y}+({sh}-overlay_h)/2'"
+    elif anim == "float":
+        ys = f"'{y}+{max(2, int(h * 0.012))}*sin(2*PI*t/2.4)'"
+    elif anim == "pulse":
+        src += f",scale=w='trunc({sw}*(1+0.06*sin(2*PI*t/1.2))/2)*2':h=-2:eval=frame"
+        xs, ys = f"'{x}+({sw}-overlay_w)/2'", f"'{y}+({sh}-overlay_h)/2'"
+    elif anim == "spin":
+        src += f",rotate='2*PI*t/6*{-1 if rtl else 1}':c=none:ow='hypot(iw,ih)':oh='hypot(iw,ih)'"
+        xs, ys = f"'{x}+({sw}-overlay_w)/2'", f"'{y}+({sh}-overlay_h)/2'"
+    return (f"{src}[sk{idx}];[{base}][sk{idx}]overlay=x={xs}:y={ys}:enable='gte(t,{S})':eval=frame[{out}]")
+
+
 def render_project(project: dict, out_path: Path, assets: AssetStore | None, progress: ProgressFn | None = None,
                    tts_fn: Callable[[str, str, int, int], bytes] | None = None) -> dict:
-    """Render a validated project to MP4. Returns {"duration": seconds, "srt": "<text>"}."""
+    """Render a validated project to MP4. Returns {"duration": seconds, "srt": "<text>"}.
+
+    Each scene is rendered on its own: background (with motion/look effect) -> slide overlay (text, picture,
+    captions) -> media video -> animated stickers; audio = TTS or recorded voice-over (+ sound effect).
+    Scenes are then joined with a stream copy, or with xfade/acrossfade when a scene uses a transition.
+    """
     progress = progress or (lambda p, m: None)
     tts_fn = tts_fn or tts.synthesize_mp3
     out_path = Path(out_path)
@@ -960,21 +1172,31 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
     work = Path(tempfile.mkdtemp(prefix="vf-render-", dir=out_path.parent))
     ff = ffmpeg_bin()
     scene_files: list[Path] = []
-    srt_lines: list = []
-    t_offset = 0.0
+    durations: list[float] = []
+    scene_caps: list[list] = []
     n = len(project["scenes"])
     portrait = h > w * 1.2
     max_total = MAX_SECONDS[resolution]
+    x264 = ["-c:v", "libx264", "-preset", "ultrafast" if draft else "veryfast",
+            "-crf", "30" if draft else ("20" if heavy else "22"), "-pix_fmt", "yuv420p",
+            "-threads", "3" if heavy else "2", "-r", str(FPS)]
+    aac = ["-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "44100"]
+    timeout = 3600 if heavy else 1800
 
     try:
+        total = 0.0
         for i, scene in enumerate(project["scenes"]):
-            progress(i / n * 0.9, f"scene {i + 1}/{n}")
+            progress(i / n * 0.88, f"scene {i + 1}/{n}")
             sdir = work / f"s{i}"
             sdir.mkdir()
             narration = scene["narration"]
-            audio = None
-            audio_len = 0.0
-            if narration:
+            rtl = scene_is_rtl(scene)
+            audio, audio_len = None, 0.0
+            vo = scene.get("voiceover")
+            if vo and assets and assets.path(vo["asset"]):
+                audio = assets.path(vo["asset"])
+                audio_len = probe_duration(audio)
+            elif narration:
                 audio = sdir / "voice.mp3"
                 audio.write_bytes(tts_fn(narration, voice["voice"], voice["rate"], voice["pitch"]))
                 audio_len = probe_duration(audio)
@@ -985,32 +1207,23 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
             else:
                 dur = LIMITS["default_silent_seconds"]
             dur = round(dur, 2)
-            if t_offset + dur > max_total:
+            if total + dur > max_total:
                 raise VideoError(f"The video is longer than {max_total / 60:g} minutes, the limit for "
                                  f"{RESOLUTIONS[resolution]['label']}. Choose a lower resolution or split it into parts.")
+            total += dur
 
             chunks = split_captions(narration, 60 if portrait else 84) if (project["captions"] and narration) else []
-            segs = caption_timing(chunks, dur - LIMITS["end_pad_seconds"] if audio and not scene["duration"] else dur) if chunks else []
+            speak = (audio_len if audio else dur)
+            segs = caption_timing(chunks, min(dur, speak) if audio and not scene["duration"] else dur) if chunks else []
             if segs:
-                segs[-1] = (segs[-1][0], dur)  # last caption stays until the scene ends
-            for (a, b), text in zip(segs, chunks):
-                srt_lines.append((t_offset + a, t_offset + b, text))
+                segs[-1] = (segs[-1][0], dur)
+            scene_caps.append(list(zip(segs, chunks)))
 
             bg_type = scene["background"]["type"]
             fade = scene["transition"] == "fade"
-            vf_fade = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0.0, dur - 0.3):.2f}:d=0.3" if fade else ""
-            af_fade = f",afade=t=in:st=0:d=0.15,afade=t=out:st={max(0.0, dur - 0.25):.2f}:d=0.25" if fade else ""
-            out_scene = sdir / "scene.mp4"
-            x264 = ["-c:v", "libx264", "-preset", "ultrafast" if draft else "veryfast",
-                    "-crf", "30" if draft else ("20" if heavy else "22"), "-pix_fmt", "yuv420p",
-                    "-threads", "3" if heavy else "2", "-r", str(FPS)]
-            aud_in = ["-i", str(audio)] if audio else ["-f", "lavfi", "-t", f"{dur}", "-i", "anullsrc=r=44100:cl=stereo"]
-            aud_out = ["-af", f"aresample=44100,apad=whole_dur={dur}{af_fade}", "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "44100"]
-
             timeline = segs if segs else [(0.0, dur)]
             captions_for = chunks if chunks else [None]
 
-            # media (picture drawn into the slide, video overlaid by ffmpeg)
             media_video = media_img = None
             sm = scene_media(scene, assets)
             if sm:
@@ -1023,71 +1236,125 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
             reg = regions(project, scene, size)
 
             cmd = [ff, "-y"]
-            filt = ""
+            # input 0: background
             if bg_type == "video":
-                vp = assets.path(scene["background"]["asset"])
+                vp = assets.path(scene["background"]["asset"]) if assets else None
                 if not vp:
                     raise VideoError(f"Scene {i + 1}: background video missing.")
-                overlays = []
-                for k, cap in enumerate(captions_for):
-                    p = sdir / f"ov{k}.png"
-                    render_overlay(project, scene, size, cap, True, media_img).save(p)
-                    overlays.append(p)
-                cmd += ["-stream_loop", "-1", "-i", str(vp)] + aud_in
-                for p in overlays:
-                    cmd += ["-i", str(p)]
-                filt = f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={FPS},setsar=1[b0]"
-                for k, (a, b) in enumerate(timeline):
-                    filt += f";[b{k}][{k + 2}:v]overlay=enable='between(t,{a:.3f},{b + 0.01:.3f})'[b{k + 1}]"
-                cur = f"b{len(timeline)}"
-                next_idx = 2 + len(overlays)
+                cmd += ["-stream_loop", "-1", "-i", str(vp)]
+                filt = f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={FPS},setsar=1"
             else:
-                lst = sdir / "frames.txt"
-                lines, last = [], None
-                base = base_frame(project, scene, size, assets).convert("RGBA")
-                for k, ((a, b), cap) in enumerate(zip(timeline, captions_for)):
-                    frame = base.copy()
-                    frame.alpha_composite(render_overlay(project, scene, size, cap, bg_type == "image", media_img))
-                    p = sdir / f"f{k}.png"
-                    frame.convert("RGB").save(p)
-                    lines.append(f"file '{p.as_posix()}'\nduration {b - a:.3f}")
-                    last = p
-                lines.append(f"file '{last.as_posix()}'")
-                lst.write_text("\n".join(lines), encoding="utf-8")
-                cmd += ["-f", "concat", "-safe", "0", "-i", str(lst)] + aud_in
-                filt = f"[0:v]fps={FPS},setsar=1[b0]"
-                cur, next_idx = "b0", 2
-
+                bp = sdir / "bg.png"
+                base_frame(project, scene, size, assets).convert("RGB").save(bp)
+                cmd += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur}", "-i", str(bp)]
+                filt = f"[0:v]fps={FPS},setsar=1"
+            for extra in (_motion_filter(scene.get("motion", "none"), w, h, dur), _look_filter(scene.get("look", "none"))):
+                if extra:
+                    filt += "," + extra
+            filt += "[b0]"
+            # input 1: audio
+            cmd += ["-i", str(audio)] if audio else ["-f", "lavfi", "-t", f"{dur}", "-i", "anullsrc=r=44100:cl=stereo"]
+            # input 2: slide overlay (text, picture, captions) as a timed RGBA image sequence
+            lst = sdir / "ov.txt"
+            lines, last = [], None
+            for k, ((a, b), cap) in enumerate(zip(timeline, captions_for)):
+                p = sdir / f"ov{k}.png"
+                render_overlay(project, scene, size, cap, bg_type in ("image", "video"), media_img).save(p)
+                lines.append(f"file '{p.as_posix()}'\nduration {max(0.04, b - a):.3f}")
+                last = p
+            lines.append(f"file '{last.as_posix()}'")
+            lst.write_text("\n".join(lines), encoding="utf-8")
+            cmd += ["-f", "concat", "-safe", "0", "-i", str(lst)]
+            filt += f";[2:v]format=rgba[ovs];[b0][ovs]overlay=format=auto:eof_action=repeat[b1]"
+            cur, nxt = "b1", 3
             if media_video is not None and reg["media"]:
                 cmd += ["-stream_loop", "-1", "-i", str(media_video)]
                 filt += ";" + _video_overlay_filter(reg["media"], (scene.get("media") or {}).get("fit", "contain"),
-                                                     "", cur, "bm", next_idx)
-                cur = "bm"
+                                                     "", cur, "bm", nxt)
+                cur, nxt = "bm", nxt + 1
+            for k, st in enumerate(scene.get("stickers") or []):
+                img = sticker_image(assets, st, w)
+                if img is None:
+                    continue
+                sp = sdir / f"st{k}.png"
+                img.save(sp)
+                x, y = sticker_box(st, img, size)
+                cmd += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur}", "-i", str(sp)]
+                filt += ";" + _sticker_filter(nxt, st, img.width, img.height, x, y, size, rtl, cur, f"bs{k}")
+                cur, nxt = f"bs{k}", nxt + 1
+            vf_fade = f",fade=t=in:st=0:d=0.3,fade=t=out:st={max(0.0, dur - 0.3):.2f}:d=0.3" if fade else ""
             filt += f";[{cur}]format=yuv420p{vf_fade}[v]"
-            cmd += ["-filter_complex", filt, "-map", "[v]", "-map", "1:a"] + x264 + aud_out + ["-t", f"{dur}", str(out_scene)]
-            _must(cmd, f"Rendering scene {i + 1}", timeout=3600 if heavy else 1800)
+            # audio: voice (+ sound effect)
+            af_fade = f",afade=t=in:st=0:d=0.15,afade=t=out:st={max(0.0, dur - 0.25):.2f}:d=0.25" if fade else ""
+            filt += f";[1:a]aresample=44100,aformat=channel_layouts=stereo,apad=whole_dur={dur}[va]"
+            alab = "va"
+            sfx = scene.get("sfx")
+            sp = assets.path(sfx["asset"]) if (sfx and assets) else None
+            if sp:
+                cmd += ["-i", str(sp)]
+                ms = int(sfx["at"] * 1000)
+                filt += (f";[{nxt}:a]aresample=44100,aformat=channel_layouts=stereo,volume={sfx['volume']:.2f},"
+                         f"adelay={ms}|{ms}[sx];[va][sx]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[vm]")
+                alab, nxt = "vm", nxt + 1
+            filt += f";[{alab}]atrim=0:{dur}{af_fade}[a]"
+            out_scene = sdir / "scene.mp4"
+            cmd += ["-filter_complex", filt, "-map", "[v]", "-map", "[a]"] + x264 + aac + ["-t", f"{dur}", str(out_scene)]
+            _must(cmd, f"Rendering scene {i + 1}", timeout=timeout)
             scene_files.append(out_scene)
-            t_offset += dur
-            if audio:
+            durations.append(dur)
+            if audio and audio.parent == sdir:
                 audio.unlink(missing_ok=True)
             for p in sdir.glob("*.png"):
-                p.unlink(missing_ok=True)  # free disk early (4K frames are large)
+                p.unlink(missing_ok=True)
 
-        progress(0.93, "joining scenes")
-        lst = work / "all.txt"
-        lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in scene_files), encoding="utf-8")
+        # ---- join
+        progress(0.9, "joining scenes")
+        trans = []
+        for i in range(n - 1):
+            name = xfade_name(project["scenes"][i]["transition"], scene_is_rtl(project["scenes"][i]))
+            d = min(XFADE_SECONDS, durations[i] / 3, durations[i + 1] / 3) if name else 0.0
+            trans.append((name, round(d, 3)))
+        starts, t = [], 0.0
+        for i in range(n):
+            starts.append(t)
+            t += durations[i] - (trans[i][1] if i < n - 1 else 0.0)
+        total = round(t, 3)
         joined = work / "joined.mp4"
-        _must([ff, "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", "-movflags", "+faststart", str(joined)], "Joining scenes")
+        if not any(name for name, _ in trans):
+            lst = work / "all.txt"
+            lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in scene_files), encoding="utf-8")
+            _must([ff, "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", "-movflags", "+faststart", str(joined)],
+                  "Joining scenes")
+        else:
+            cmd = [ff, "-y"]
+            for p in scene_files:
+                cmd += ["-i", str(p)]
+            filt = ";".join(f"[{i}:v]settb=AVTB,fps={FPS},format=yuv420p[v{i}];[{i}:a]aresample=44100[a{i}]" for i in range(n))
+            vcur, acur, length = "v0", "a0", durations[0]
+            for i in range(1, n):
+                name, d = trans[i - 1]
+                vo_, ao_ = f"vx{i}", f"ax{i}"
+                if name:
+                    filt += (f";[{vcur}][v{i}]xfade=transition={name}:duration={d}:offset={max(0.0, length - d):.3f}[{vo_}]"
+                             f";[{acur}][a{i}]acrossfade=d={d}:c1=tri:c2=tri[{ao_}]")
+                    length += durations[i] - d
+                else:
+                    filt += f";[{vcur}][{acur}][v{i}][a{i}]concat=n=2:v=1:a=1[{vo_}][{ao_}]"
+                    length += durations[i]
+                vcur, acur = vo_, ao_
+            cmd += ["-filter_complex", filt, "-map", f"[{vcur}]", "-map", f"[{acur}]"] + x264 + aac + \
+                   ["-movflags", "+faststart", str(joined)]
+            _must(cmd, "Joining scenes with transitions", timeout=timeout)
 
         music = project.get("music")
         mpath = assets.path(music["asset"]) if (music and assets) else None
         if mpath:
             progress(0.96, "mixing music")
-            fade_start = max(0.0, t_offset - 2.0)
+            fade_start = max(0.0, total - 2.0)
             _must([ff, "-y", "-i", str(joined), "-stream_loop", "-1", "-i", str(mpath), "-filter_complex",
                    f"[1:a]volume={music['volume']:.3f},afade=t=in:st=0:d=1.5,afade=t=out:st={fade_start:.2f}:d=2[m];"
                    f"[0:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]",
-                   "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-t", f"{t_offset:.2f}",
+                   "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-t", f"{total:.2f}",
                    "-movflags", "+faststart", str(out_path)], "Mixing music")
         else:
             shutil.move(str(joined), str(out_path))
@@ -1095,8 +1362,13 @@ def render_project(project: dict, out_path: Path, assets: AssetStore | None, pro
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
+    srt_lines = []
+    for i, caps in enumerate(scene_caps):
+        for (a, b), text in caps:
+            srt_lines.append((starts[i] + a, min(starts[i] + b, total), text))
     srt = [f"{idx}\n{srt_time(a)} --> {srt_time(b)}\n{text}\n" for idx, (a, b, text) in enumerate(srt_lines, 1)]
-    return {"duration": round(t_offset, 2), "srt": "\n".join(srt)}
+    return {"duration": round(total, 2), "srt": "\n".join(srt)}
+
 
 
 # ----------------------------------------------------------------------------- jobs

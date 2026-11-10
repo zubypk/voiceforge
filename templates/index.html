@@ -3,19 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("vf-theme")||"midnight"}catch(e){}</script>
 <title>VoiceForge — Text to Speech &amp; Video Studio</title>
 <meta name="description" content="Natural voices in more than 70 languages (Arabic first) and a video studio for educational videos with narration, captions, YouTube/Shorts/Instagram presets, up to 4K MP4 export.">
 <style>
   :root{--bg:#0b0d14;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.07);--line:rgba(255,255,255,.1);--text:#eef0f7;--muted:#9aa3b8;
-    --accent:#7c5cff;--accent2:#3ea6ff;--ok:#3ddc97;--err:#ff6b81;--warn:#ffc857;--grad:linear-gradient(135deg,#7c5cff 0%,#3ea6ff 100%);--radius:16px}
+    --accent:#7c5cff;--accent2:#3ea6ff;--ok:#3ddc97;--err:#ff6b81;--warn:#ffc857;--grad:linear-gradient(135deg,#7c5cff 0%,#3ea6ff 100%);--radius:16px;
+    --nav:rgba(11,13,20,.72);--modal:#141826;--input:rgba(0,0,0,.28);--toast:#1c2236;--glow1:rgba(124,92,255,.22);--glow2:rgba(62,166,255,.16);--shadow:0 10px 30px rgba(0,0,0,.25);--on-grad:#fff}
+  html[data-theme=daylight]{--bg:#f5f7fb;--card:#ffffff;--card2:#f1f4fa;--line:#e2e7f0;--text:#152039;--muted:#5b6782;--accent:#2f6bff;--accent2:#00a3a3;
+    --grad:linear-gradient(135deg,#2f6bff 0%,#00b3a4 100%);--nav:rgba(255,255,255,.85);--modal:#ffffff;--input:#ffffff;--toast:#ffffff;--glow1:rgba(47,107,255,.10);--glow2:rgba(0,179,164,.08);--shadow:0 8px 26px rgba(21,32,57,.08)}
+  html[data-theme=ocean]{--bg:#06141f;--card:rgba(120,200,255,.05);--card2:rgba(120,200,255,.09);--line:rgba(140,210,255,.14);--text:#e8f6ff;--muted:#8fb3c9;--accent:#00b4d8;--accent2:#48cae4;
+    --grad:linear-gradient(135deg,#0077b6 0%,#00b4d8 100%);--nav:rgba(6,20,31,.8);--modal:#0b2030;--toast:#0f2a3d;--glow1:rgba(0,180,216,.2);--glow2:rgba(0,119,182,.2)}
+  html[data-theme=sunset]{--bg:#170c12;--card:rgba(255,190,150,.05);--card2:rgba(255,190,150,.09);--line:rgba(255,190,150,.14);--text:#fff3ec;--muted:#c9a597;--accent:#ff6b4a;--accent2:#ffb347;
+    --grad:linear-gradient(135deg,#ff4e6a 0%,#ffb347 100%);--nav:rgba(23,12,18,.8);--modal:#24131b;--toast:#2b1720;--glow1:rgba(255,78,106,.2);--glow2:rgba(255,179,71,.14)}
+  html[data-theme=forest]{--bg:#0a1410;--card:rgba(170,255,200,.04);--card2:rgba(170,255,200,.08);--line:rgba(170,255,200,.12);--text:#ecfff4;--muted:#94b8a3;--accent:#2ec27e;--accent2:#a3e635;
+    --grad:linear-gradient(135deg,#1f9d63 0%,#a3e635 100%);--nav:rgba(10,20,16,.8);--modal:#10201a;--toast:#13261e;--glow1:rgba(46,194,126,.18);--glow2:rgba(163,230,53,.1)}
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Naskh Arabic","Noto Sans Arabic",Tahoma,sans-serif;
-    background:radial-gradient(1100px 600px at 80% -10%,rgba(124,92,255,.22),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(62,166,255,.16),transparent 55%),var(--bg);
+    background:radial-gradient(1100px 600px at 80% -10%,var(--glow1),transparent 60%),radial-gradient(900px 500px at -10% 10%,var(--glow2),transparent 55%),var(--bg);background-attachment:fixed;
     color:var(--text);line-height:1.6}
   a{color:var(--accent2);text-decoration:none}
   .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
-  nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);background:rgba(11,13,20,.72);border-bottom:1px solid var(--line)}
+  nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);background:var(--nav);border-bottom:1px solid var(--line)}
   .nav-in{display:flex;align-items:center;gap:12px;padding:12px 18px;max-width:1080px;margin:0 auto}
   .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--text)}
   .logo i{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;font-style:normal;font-size:16px}
@@ -35,15 +45,15 @@
   section{padding:24px 0}
   h2{font-size:26px;margin:0 0 6px}h3{margin:0 0 10px;font-size:17px}
   .sub{color:var(--muted);margin:0 0 18px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   label,.lbl{display:block;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-  select,textarea,input[type=text],input[type=number]{width:100%;background:rgba(0,0,0,.28);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit}
+  select,textarea,input[type=text],input[type=number]{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit}
   select:focus,textarea:focus,input:focus{outline:2px solid rgba(124,92,255,.55);border-color:transparent}
   textarea{min-height:110px;resize:vertical;line-height:1.7}
   #text{min-height:200px;font-size:17px;line-height:1.8}
-  .seg{display:flex;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+  .seg{display:flex;background:var(--input);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
   .seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:8px 0;border-radius:9px;font:inherit;cursor:pointer}
   .seg button.on{background:var(--grad);color:#fff;font-weight:600}
   input[type=range]{width:100%;accent-color:var(--accent)}
@@ -51,13 +61,13 @@
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
   .btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;padding:10px 16px;font:inherit;cursor:pointer;display:inline-block}
   .btn:hover:not(:disabled){border-color:var(--accent)}
-  .btn.primary{background:var(--grad);border:0;font-weight:600;box-shadow:0 6px 22px rgba(124,92,255,.35)}
+  .btn.primary{background:var(--grad);border:0;font-weight:600;color:var(--on-grad);box-shadow:0 6px 22px var(--glow1)}
   .btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
   .btn.danger:hover:not(:disabled){border-color:var(--err);color:var(--err)}
   .btn:disabled{opacity:.5;cursor:wait}
   .count{color:var(--muted);font-size:13px;margin-inline-start:auto}
   .status{min-height:20px;font-size:14px;color:var(--muted);margin-top:10px}.status.err{color:var(--err)}.status.ok{color:var(--ok)}
-  canvas{width:100%;height:120px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line);cursor:pointer;display:block}
+  canvas{width:100%;height:120px;border-radius:12px;background:var(--input);border:1px solid var(--line);cursor:pointer;display:block}
   .player{display:flex;align-items:center;gap:12px;margin-top:12px}.time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
   #audio{display:none}
   .pill{display:inline-block;font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--line);color:var(--muted)}
@@ -66,7 +76,7 @@
   .warn-box b{color:var(--warn)}
   .tabs{display:flex;gap:8px;margin:6px 0 20px;flex-wrap:wrap}
   .tab{flex:1;min-width:160px;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:14px;padding:13px 16px;font:inherit;font-size:16px;cursor:pointer}
-  .tab.on{background:var(--grad);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 8px 26px rgba(124,92,255,.3)}
+  .tab.on{background:var(--grad);color:var(--on-grad);border-color:transparent;font-weight:600;box-shadow:0 8px 26px rgba(124,92,255,.3)}
   .view{display:none}.view.on{display:block}
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .pcard{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;text-align:start;color:var(--text);font:inherit}
@@ -88,7 +98,7 @@
   .sitem.on{border-color:var(--accent);background:rgba(124,92,255,.14)}
   .sitem em{font-style:normal;background:var(--grad);border-radius:7px;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px;flex:none}
   .sitem span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
-  .sub-card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .sub-card{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
   .mediarow{display:flex;gap:12px;align-items:center}
   .thumb{width:84px;height:56px;border-radius:9px;object-fit:cover;background:#000;border:1px solid var(--line);flex:none}
   .thumb.empty{display:grid;place-items:center;color:var(--muted);font-size:22px}
@@ -101,7 +111,7 @@
   .pbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.pbar input{flex:1;min-width:200px;font-size:17px;font-weight:600}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:5vh 14px;overflow:auto}
   .modal.on{display:flex}
-  .modal-box{background:#141826;border:1px solid var(--line);border-radius:18px;width:min(820px,100%);padding:18px}
+  .modal-box{background:var(--modal);box-shadow:var(--shadow);border:1px solid var(--line);border-radius:18px;width:min(820px,100%);padding:18px}
   .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:18px}
   .lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
   .asset{background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;position:relative}
@@ -112,7 +122,7 @@
   .plist{display:flex;flex-direction:column;gap:8px;margin-top:6px}
   .prow{display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
   .prow b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.prow span{color:var(--muted);font-size:12px}
-  .toast{position:fixed;bottom:20px;inset-inline:0;margin:auto;width:max-content;max-width:92vw;background:#1c2236;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:60;display:none}
+  .toast{position:fixed;bottom:20px;inset-inline:0;margin:auto;width:max-content;max-width:92vw;background:var(--toast);box-shadow:var(--shadow);border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:60;display:none}
   .toast.on{display:block}.toast.err{border-color:var(--err);color:var(--err)}
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;counter-reset:s}
   .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
@@ -127,6 +137,49 @@
   .kv{display:grid;grid-template-columns:170px 1fr;gap:8px 14px;font-size:14px}.kv div:nth-child(odd){color:var(--muted)}
   details{border-top:1px solid var(--line);padding:12px 0}details:first-of-type{border-top:0}summary{cursor:pointer;font-weight:600}details p{color:var(--muted);margin:8px 0 0}
   footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px;text-align:center}
+  /* ---- extras: themes picker, live recording, layers, library, audio editor, features ---- */
+  .theme-pick{display:flex;gap:6px;align-items:center}
+  .tdot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+  .tdot.on{border-color:var(--text);transform:scale(1.1)}
+  .btn.rec.on{background:#e5484d;border-color:#e5484d;color:#fff;animation:recpulse 1.4s infinite}
+  @keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.55)}50%{box-shadow:0 0 0 8px rgba(229,72,77,0)}}
+  .btn.big{font-size:16px;padding:12px 20px}
+  canvas.mini{height:56px;margin-top:8px;cursor:default}
+  canvas.live{height:90px;margin-top:12px;cursor:default}
+  canvas.ae-wave{height:220px;margin-top:10px;cursor:text;touch-action:none}
+  .pill.live{color:#e5484d;border-color:rgba(229,72,77,.5)}
+  .live-type{min-height:220px;max-height:420px;overflow:auto;background:var(--input);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;font-size:19px;line-height:1.9;white-space:pre-wrap}
+  .live-type .interim{color:var(--muted);font-style:italic}
+  .live-type .caret{display:inline-block;width:2px;height:1.2em;background:var(--accent);vertical-align:middle;margin-inline-start:2px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .pwrap{position:relative}
+  #layerHost{position:absolute;inset-inline-start:0;top:0;pointer-events:none;direction:ltr}
+  #layerHost .layer{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;cursor:grab;outline:1px dashed rgba(255,255,255,.55);outline-offset:2px;user-select:none;touch-action:none}
+  #layerHost .layer.drag{cursor:grabbing;outline-color:var(--accent)}
+  .layer-row img{width:40px;height:40px;object-fit:contain;background:var(--input);border-radius:8px;flex:none}
+  .layer-row select{width:auto;flex:1;min-width:110px;padding:6px 8px}
+  .mini-l{display:flex;flex-direction:column;gap:2px;margin:0;font-size:10px;min-width:80px}
+  .mini-l input{padding:4px 6px}
+  .libtabs{margin-bottom:12px}.libtabs .rchip.on{background:var(--grad);color:var(--on-grad);border-color:transparent}
+  .lib.small{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+  .lib.small .asset img{object-fit:contain;padding:10px;background:var(--input);height:80px}
+  .asset.shape{border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;padding:0;text-align:center}
+  .emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px;margin-top:12px}
+  .emo{font-size:34px;line-height:1;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 0;cursor:pointer}
+  .emo:hover,.asset.shape:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+  .libplay{min-width:36px}
+  .tools .sep{width:1px;height:22px;background:var(--line)}
+  .empty-state{border:2px dashed var(--line);border-radius:14px;padding:40px 14px;text-align:center;color:var(--muted);margin-top:14px}
+  .spin{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px;text-align:start}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,border-color .15s}
+  .feat:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .feat i{font-style:normal;font-size:22px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--grad);margin-bottom:10px}
+  .feat b{display:block;margin-bottom:4px}.feat span{color:var(--muted);font-size:14px;line-height:1.5}
+  .build{display:inline-block;margin-top:8px;font-variant-numeric:tabular-nums;opacity:.85}
+  @media(max-width:820px){.features{grid-template-columns:1fr 1fr}.theme-pick{display:none}}
   @media(max-width:820px){.grid2,.grid3,.steps,.editor{grid-template-columns:1fr}.links{display:none}.kv{grid-template-columns:1fr}.slist{max-height:none;flex-direction:row;overflow-x:auto}.sitem{flex:none;max-width:200px}}
 </style>
 </head>
@@ -136,12 +189,15 @@
   <div class="links">
     <a href="#studio" data-go="voice" data-i="nav_voice">Voice</a>
     <a href="#studio" data-go="video" data-i="nav_video">Video</a>
+    <a href="#studio" data-go="stt" data-i="nav_stt">Speech to text</a>
+    <a href="#studio" data-go="audio" data-i="nav_audio">Audio editor</a>
     <a href="#guide" data-i="nav_guide">Guide</a>
     <a href="#about" data-i="nav_about">About</a>
   </div>
   <div class="spacer"></div>
   <div id="gsi"></div>
   <div id="user"><img id="uimg" alt=""><span id="uname"></span><button class="chip" id="signout" data-i="signout">Sign out</button></div>
+  <div class="theme-pick" id="themePick" title="Theme"></div>
   <button class="chip" id="langBtn">العربية</button>
 </div></nav>
 
@@ -156,12 +212,22 @@
     <div class="stat"><b id="sFmt">6</b><span data-i="stat_fmt">screen formats</span></div>
     <div class="stat"><b>720p–4K</b><span data-i="stat_res">up to 4K</span></div>
   </div>
+  <div class="features">
+    <div class="feat" data-go="voice"><i>🎙</i><b data-i="f1_t">Text to speech</b><span data-i="f1_d">Natural voices, translator and dictation. Export MP3.</span></div>
+    <div class="feat" data-go="video"><i>🎬</i><b data-i="f2_t">Video studio</b><span data-i="f2_d">Slides, PDF/PowerPoint import, effects, transitions, 4K MP4.</span></div>
+    <div class="feat" data-go="video"><i>🧩</i><b data-i="f3_t">Free media library</b><span data-i="f3_d">Clip art, shapes, real photos, music and sound effects.</span></div>
+    <div class="feat" data-go="stt"><i>🗣</i><b data-i="f4_t">Speech to text</b><span data-i="f4_d">Live typing as you speak, captions and translation.</span></div>
+    <div class="feat" data-go="audio"><i>🎚</i><b data-i="f5_t">Audio editor</b><span data-i="f5_d">Cut, fade, clean up voice, effects. MP3 and WAV.</span></div>
+    <div class="feat" data-go="video"><i>🎤</i><b data-i="f6_t">Your own voice</b><span data-i="f6_d">Record a voice-over for any scene with live captions.</span></div>
+  </div>
 </header>
 
 <section id="studio">
   <div class="tabs">
     <button class="tab on" id="tabVoice" data-i="tab_voice">🎙 Text to Speech</button>
     <button class="tab" id="tabVideo" data-i="tab_video">🎬 Video Studio</button>
+    <button class="tab" id="tabStt" data-i="tab_stt">🗣 Speech to Text</button>
+    <button class="tab" id="tabAudio" data-i="tab_audio">🎚 Audio Editor</button>
   </div>
 
   <!-- ===================== VOICE ===================== -->
@@ -192,6 +258,10 @@
         <button class="btn" id="trBtn" data-i="tr_go">🌐 Translate</button>
         <button class="btn" id="trUndo" data-i="tr_undo" style="display:none">↩ Undo</button>
       </div>
+      <div class="row" style="align-items:flex-end">
+        <div style="min-width:180px"><label for="trMicLang" data-i="tr_speak_in">Speak in</label><select id="trMicLang"></select></div>
+        <button class="btn rec" id="trMic" data-i="tr_mic">🎤 Dictate</button>
+      </div>
       <div class="row">
         <button class="btn primary" id="previewBtn" data-i="preview">▶ Preview</button>
         <button class="btn" id="exportBtn" data-i="export">⬇ Export MP3</button>
@@ -204,7 +274,7 @@
     </div>
     <div class="card">
       <canvas id="wave"></canvas>
-      <div class="player"><button class="btn" id="playBtn" disabled data-i="play">▶ Play</button><span class="time" id="time">0:00 / 0:00</span></div>
+      <div class="player"><button class="btn" id="playBtn" disabled data-i="play">▶ Play</button><span class="time" id="time">0:00 / 0:00</span><span style="flex:1"></span><button class="btn sm" id="editAudioBtn" data-i="vo_edit">✂ Edit</button></div>
       <audio id="audio"></audio>
     </div>
   </div>
@@ -267,6 +337,7 @@
         <div style="flex:1">
           <div id="musicName" class="hint" data-i="v_music_none">No music</div>
           <div class="row" style="margin-top:6px">
+            <button class="btn sm primary" id="musicLib" data-i="lib_browse_music">🎵 Browse free music library</button>
             <button class="btn sm" id="musicPick" data-i="v_music_pick">Choose / upload music…</button>
             <button class="btn sm danger" id="musicClear" data-i="v_music_remove">Remove music</button>
           </div>
@@ -285,7 +356,7 @@
         <div>
           <div class="slist" id="sceneList"></div>
           <button class="btn sm" id="addScene" style="margin-top:8px;width:100%" data-i="v_add">＋ Add scene</button>
-          <button class="btn sm" id="importDoc" style="margin-top:6px;width:100%" data-i="imp_btn">📄 Import PDF / PowerPoint</button>
+          <button class="btn sm" id="importDoc" style="margin-top:6px;width:100%" data-i="imp_btn">📄 Import PDF / PowerPoint / Word / Excel</button>
         </div>
         <div id="sceneEditor">
           <div class="row" style="margin-top:0">
@@ -325,12 +396,56 @@
             <div id="bgExtra"></div>
             <div><label for="sDur" data-i="v_dur">Duration (seconds)</label><input type="number" id="sDur" min="2" max="600" step="0.5" placeholder="auto"><span class="hint" data-i="v_dur_h"></span></div>
           </div>
-          <div class="grid2" style="margin-top:12px">
-            <div><label for="sTrans" data-i="v_trans">Transition</label><select id="sTrans"><option value="fade" data-i="t_fade">Fade</option><option value="none" data-i="t_none">None (cut)</option></select></div><div></div>
+          <div class="sub-card" id="fxBox">
+            <label data-i="fx_title">✨ Effects &amp; transitions</label>
+            <div class="grid3">
+              <div><label for="sMotion" data-i="fx_motion">Motion</label><select id="sMotion"></select></div>
+              <div><label for="sLook" data-i="fx_look">Look / filter</label><select id="sLook"></select></div>
+              <div><label for="sTrans" data-i="v_trans">Transition to next scene</label><select id="sTrans"></select></div>
+            </div>
+            <div class="hint" style="margin-top:6px" data-i="fx_hint">Motion and looks apply to the background. Left/right transitions are mirrored automatically for Arabic and other right-to-left scenes.</div>
           </div>
+
+          <div class="sub-card" id="voBox">
+            <label data-i="vo_title">🎤 Your own voice (voice-over)</label>
+            <div class="hint" data-i="vo_hint">Record yourself for this scene instead of the AI voice. Captions can be typed live from your speech.</div>
+            <canvas id="voWave" class="mini"></canvas>
+            <div class="row">
+              <button class="btn sm rec" id="voRec" data-i="vo_rec">● Record</button>
+              <span class="pill" id="voTime">0:00</span>
+              <label class="check"><input type="checkbox" id="voType" checked><span data-i="vo_type">Type captions from my speech</span></label>
+            </div>
+            <div class="row" id="voHas" style="display:none">
+              <audio id="voAudio" controls preload="none" style="flex:1;min-width:200px;height:36px"></audio>
+              <button class="btn sm" id="voEdit" data-i="vo_edit">✂ Edit</button>
+              <button class="btn sm danger" id="voDel" data-i="v_media_remove">Remove</button>
+            </div>
+            <div class="row"><button class="btn sm" id="voPick" data-i="vo_pick">Use an audio file…</button></div>
+          </div>
+
+          <div class="sub-card" id="layerBox">
+            <label data-i="ly_title">🧩 Layers: clip art, shapes, photos</label>
+            <div class="hint" data-i="ly_hint">Drag layers on the preview to move them. Each layer can animate in.</div>
+            <div id="layerList" class="plist"></div>
+            <div class="row"><button class="btn sm" id="addLayer" data-i="ly_add">＋ Add clip art / shape / photo</button></div>
+          </div>
+
+          <div class="sub-card" id="sfxBox">
+            <label data-i="sx_title">🔊 Sound effect</label>
+            <div class="row" style="margin-top:0">
+              <button class="btn sm" id="sfxPick" data-i="sx_pick">Choose a sound effect…</button>
+              <span class="hint" id="sfxName"></span>
+            </div>
+            <div class="grid2" id="sfxOpts" style="margin-top:8px;display:none">
+              <div><label for="sfxAt" data-i="sx_at">Starts at (seconds)</label><input type="number" id="sfxAt" min="0" max="600" step="0.1" value="0"></div>
+              <div><label for="sfxVol"><span data-i="sx_vol">Volume</span><span class="val" id="sfxVolVal">80%</span></label><input type="range" id="sfxVol" min="0" max="200" value="80"></div>
+            </div>
+            <div class="row" id="sfxDelRow" style="display:none"><button class="btn sm danger" id="sfxDel" data-i="v_media_remove">Remove</button></div>
+          </div>
+
           <div style="margin-top:14px">
             <div class="row" style="margin-top:0"><span class="lbl" style="margin:0" data-i="v_preview">Slide preview</span><span class="hint" id="prevNote"></span></div>
-            <img class="preview" id="scenePreview" alt="">
+            <div class="pwrap" id="pWrap"><img class="preview" id="scenePreview" alt=""><div id="layerHost"></div></div>
           </div>
         </div>
       </div>
@@ -351,6 +466,96 @@
       </div>
     </div>
   </div>
+  <div class="view" id="viewStt">
+    <div class="card">
+      <h3 data-i="stt_title">Speech to text — live typing</h3>
+      <p class="sub" data-i="stt_sub"></p>
+      <div class="grid2">
+        <div><label for="sttLang" data-i="stt_lang">Language you speak</label><select id="sttLang"></select></div>
+        <div class="row" style="align-items:flex-end;margin-top:0">
+          <button class="btn primary rec big" id="sttBtn" data-i="stt_start">🎤 Start listening</button>
+          <span class="pill" id="sttTime">0:00</span><span class="pill" id="sttState"></span>
+        </div>
+      </div>
+      <canvas id="sttWave" class="live"></canvas>
+      <div class="hint" id="sttNote"></div>
+      <label style="margin-top:14px" data-i="stt_text">Transcript (editable)</label>
+      <div class="live-type" id="sttLive" style="display:none"></div>
+      <textarea id="sttText" dir="auto" style="min-height:220px;font-size:17px"></textarea>
+      <div class="row">
+        <button class="btn sm" id="sttCopy" data-i="stt_copy">Copy</button>
+        <button class="btn sm" id="sttTxt" data-i="stt_txt">⬇ .txt</button>
+        <button class="btn sm" id="sttSrt" data-i="stt_srt">⬇ Captions .srt</button>
+        <button class="btn sm primary" id="sttToTts" data-i="stt_to_tts">➜ Text to Speech</button>
+        <button class="btn sm danger" id="sttClear" data-i="stt_clear">Clear</button>
+        <span class="count" id="sttCount"></span>
+      </div>
+      <div class="row" style="align-items:flex-end">
+        <div style="min-width:200px"><label for="sttTo" data-i="stt_translate">🌐 Translate to</label><select id="sttTo"></select></div>
+        <button class="btn" id="sttTrBtn" data-i="tr_go">🌐 Translate</button>
+      </div>
+      <p class="hint" id="sttPrivacy" style="margin-top:12px"></p>
+    </div>
+    <div class="card" id="sttRecCard" style="display:none">
+      <h3 data-i="stt_rec_title">Your recording</h3>
+      <audio id="sttAudio" controls style="width:100%"></audio>
+      <div class="row">
+        <button class="btn sm" id="sttEdit" data-i="stt_to_editor">✂ Open in audio editor</button>
+        <button class="btn sm" id="sttSave" data-i="stt_save">Save to library</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="viewAudio">
+    <div class="card">
+      <h3 data-i="ae_title">Audio editor</h3>
+      <p class="sub" data-i="ae_sub"></p>
+      <div class="row" style="margin-top:0">
+        <label class="btn primary" style="margin:0;text-transform:none;letter-spacing:0;font-size:15px;color:#fff"><span data-i="ae_import">📂 Import sound</span><input type="file" id="aeFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.webm,.weba,.opus,video/mp4" hidden></label>
+        <button class="btn" id="aeLib" data-i="ae_from_lib">From my library</button>
+        <button class="btn rec" id="aeRec" data-i="ae_record">🎤 Record</button>
+        <span class="spin" id="aeBusy" style="display:none"></span>
+      </div>
+      <canvas id="aeRecWave" class="live" style="display:none"></canvas>
+      <div id="aeEmpty" class="empty-state" data-i="ae_empty">Import or record a sound to start editing.</div>
+      <div id="aeMain" style="display:none">
+        <div class="row"><b id="aeName"></b><span class="pill" id="aeTime"></span><span class="hint" id="aeSel"></span></div>
+        <canvas id="aeWave" class="ae-wave"></canvas>
+        <input type="range" id="aeScroll" min="0" max="0" value="0" style="margin-top:6px">
+        <div class="row tools">
+          <button class="btn sm primary" id="aePlay" data-i="ae_play">▶ Play</button>
+          <button class="btn sm" id="aePlaySel" data-i="ae_play_sel">▶ Selection</button>
+          <span class="sep"></span>
+          <button class="btn sm" id="aeZin" title="Zoom in">🔍＋</button><button class="btn sm" id="aeZout" title="Zoom out">🔍－</button><button class="btn sm" id="aeZfit" title="Fit">⤢</button>
+          <span class="sep"></span>
+          <button class="btn sm" id="aeUndo" data-i="ae_undo">↶ Undo</button><button class="btn sm" id="aeRedo" data-i="ae_redo">↷ Redo</button>
+        </div>
+        <div class="row tools">
+          <button class="btn sm" id="ae_cut" data-i="ae_cut">Cut</button><button class="btn sm" id="ae_copy" data-i="ae_copy">Copy</button>
+          <button class="btn sm" id="ae_paste" data-i="ae_paste">Paste</button><button class="btn sm" id="ae_delete" data-i="ae_delete">Delete</button>
+          <button class="btn sm" id="ae_trim" data-i="ae_trim">Trim to selection</button><button class="btn sm" id="ae_silence" data-i="ae_silence">Silence</button>
+          <button class="btn sm" id="ae_insert_sil" data-i="ae_insert_sil">Insert 1 s silence</button>
+        </div>
+        <div class="row tools">
+          <button class="btn sm" id="ae_fadein" data-i="ae_fadein">Fade in</button><button class="btn sm" id="ae_fadeout" data-i="ae_fadeout">Fade out</button>
+          <button class="btn sm" id="ae_normalize" data-i="ae_normalize">Normalize</button><button class="btn sm" id="ae_louder" data-i="ae_louder">Louder</button>
+          <button class="btn sm" id="ae_quieter" data-i="ae_quieter">Quieter</button><button class="btn sm" id="ae_reverse" data-i="ae_reverse">Reverse</button>
+        </div>
+        <div class="row" style="align-items:flex-end">
+          <div style="min-width:240px"><label for="aeFx" data-i="ae_fx">Effects</label><select id="aeFx"></select></div>
+          <button class="btn" id="aeFxApply" data-i="ae_apply">Apply</button>
+          <button class="btn" id="aeMix" data-i="ae_mix">Mix in another sound at cursor</button>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="aeMp3" data-i="ae_export_mp3">⬇ Export MP3</button>
+          <button class="btn" id="aeWav" data-i="ae_export_wav">⬇ Export WAV</button>
+          <button class="btn" id="aeSave" data-i="ae_save">Save to library</button>
+        </div>
+        <p class="hint" data-i="ae_shortcuts"></p>
+      </div>
+    </div>
+  </div>
+
 </section>
 
 <section id="guide">
@@ -420,13 +625,19 @@ curl -X POST <span class="origin"></span>/api/export -H "Content-Type: applicati
     </div></div>
 </section>
 </main>
-<footer><div class="wrap"><span data-i="foot"></span></div></footer>
+<footer><div class="wrap"><span data-i="foot"></span><br><span class="build" id="buildInfo"></span></div></footer>
 
 <div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><b id="mTitle"></b><button class="chip" id="mClose" data-i="close">Close</button></div><div id="mBody"></div></div></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="uploadInput" multiple hidden>
 
 <script src="/static/i18n.js"></script>
+<script src="/static/i18n2.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/mic.js"></script>
+<script src="/static/studio_fx.js"></script>
+<script src="/static/stt.js"></script>
+<script src="/static/audio_editor.js"></script>
+<script src="/static/site.js"></script>
 </body>
 </html>
