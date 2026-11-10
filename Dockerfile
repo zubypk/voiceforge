@@ -2,10 +2,14 @@ FROM python:3.12-slim
 
 # Fonts for slide text. fonts-noto-core covers Arabic, Hebrew, Devanagari, Thai, Cyrillic, Greek...
 # Build with --build-arg INSTALL_CJK=1 to add Chinese/Japanese/Korean slide text.
+# LibreOffice (Impress) converts PowerPoint decks pixel-exactly; build with --build-arg INSTALL_OFFICE=0 for a
+# smaller image (PDF import still works and .pptx falls back to editable text + pictures).
 ARG INSTALL_CJK=0
+ARG INSTALL_OFFICE=1
 RUN apt-get update \
  && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core fonts-noto-core \
  && if [ "$INSTALL_CJK" = "1" ]; then apt-get install -y --no-install-recommends fonts-noto-cjk; fi \
+ && if [ "$INSTALL_OFFICE" = "1" ]; then apt-get install -y --no-install-recommends libreoffice-impress-nogui || apt-get install -y --no-install-recommends libreoffice-impress; fi \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

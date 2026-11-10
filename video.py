@@ -12,7 +12,7 @@ A project is plain JSON:
       "scenes": [
         {"layout": "title|bullets|text|quote|media", "title": "...", "body": "...", "narration": "...",
          "background": {"type": "theme|color|image|video", "color": "#112233", "asset": "<id>"},
-         "media": {"asset": "<id>", "position": "auto|left|right|top|bottom", "fit": "contain|cover"},
+         "media": {"asset": "<id>", "position": "auto|left|right|top|bottom|full", "fit": "contain|cover"},
          "duration": null,               # seconds, or null = follow the narration
          "transition": "fade|none"}
       ]
@@ -79,7 +79,7 @@ THEMES = {
 }
 
 LAYOUTS = ("title", "bullets", "text", "quote", "media")
-MEDIA_POSITIONS = ("auto", "left", "right", "top", "bottom")
+MEDIA_POSITIONS = ("auto", "left", "right", "top", "bottom", "full")
 MEDIA_FITS = ("contain", "cover")
 TRANSITIONS = ("fade", "none")
 FPS = 30
@@ -420,11 +420,16 @@ def regions(project: dict, scene: dict, size: tuple[int, int]) -> dict:
         return {"text": area, "media": None}
     cw, ch = area[2] - area[0], area[3] - area[1]
     gap = w * 0.04
+    if layout == "media" and media.get("position") == "full":   # whole frame (imported slides / PDF pages)
+        cap = project["captions"] and scene["narration"]
+        return {"text": area, "media": (0, 0, w, h * 0.80) if cap else (0, 0, w, h), "title_h": 0.0, "cap_h": 0.0}
     if layout == "media":
         title_h = h * 0.17 if scene["title"] else 0.0
         cap_h = h * 0.13 if scene["body"] else 0.0
         return {"text": area, "media": (mx, my + title_h, area[2], bottom - cap_h), "title_h": title_h, "cap_h": cap_h}
     pos = media.get("position", "auto")
+    if pos == "full":
+        pos = "auto"
     landscape = w >= h * 1.3
     if pos == "auto":
         pos = (("left" if is_rtl(scene["title"] or scene["body"]) else "right") if landscape else "top")
@@ -447,7 +452,7 @@ def int_rect(rect: tuple) -> tuple[int, int, int, int]:
     return x, y, max(2, (int(x1) - x) // 2 * 2), max(2, (int(y1) - y) // 2 * 2)
 
 
-def paste_media(layer: Image.Image, rect: tuple, img: Image.Image, fit: str, theme: dict, unit: int) -> None:
+def paste_media(layer: Image.Image, rect: tuple, img: Image.Image, fit: str, theme: dict, unit: int, plain: bool = False) -> None:
     from PIL import ImageFilter
 
     x, y, rw, rh = int_rect(rect)
@@ -458,6 +463,9 @@ def paste_media(layer: Image.Image, rect: tuple, img: Image.Image, fit: str, the
         k = min(rw / img.width, rh / img.height)
         fw, fh = max(2, round(img.width * k)), max(2, round(img.height * k))
         fitted, px, py = img.resize((fw, fh), Image.LANCZOS), x + (rw - fw) // 2, y + (rh - fh) // 2
+    if plain:                      # full-screen slide: no frame, shadow or rounded corners
+        layer.paste(fitted, (px, py))
+        return
     radius = max(6, round(unit * 0.016))
     mask = Image.new("L", fitted.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, fitted.width - 1, fitted.height - 1), radius, fill=255)
@@ -490,7 +498,9 @@ def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: s
     title, body, layout = scene["title"], scene["body"], scene["layout"]
     rtl_title = is_rtl(title or body)
 
-    if layout == "media":
+    if layout == "media" and (scene.get("media") or {}).get("position") == "full":
+        pass
+    elif layout == "media":
         if title:
             _fit_and_draw(d, [Block(title, 0.082, True, "text", align="center", gap=0.3)],
                           (mx, my, w - mx, my + reg.get("title_h", h * 0.17)), theme, unit, "center")
@@ -523,7 +533,9 @@ def render_overlay(project: dict, scene: dict, size: tuple[int, int], caption: s
         _fit_and_draw(d, blocks, rect, theme, unit, "top")
 
     if reg["media"] and media_img is not None:
-        paste_media(layer, reg["media"], media_img, (scene.get("media") or {}).get("fit", "contain"), theme, unit)
+        m = scene.get("media") or {}
+        paste_media(layer, reg["media"], media_img, m.get("fit", "contain"), theme, unit,
+                    plain=layout == "media" and m.get("position") == "full")
     if project["captions"] and caption:
         _draw_caption(d, caption, size, unit)
     return layer

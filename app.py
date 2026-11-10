@@ -20,6 +20,7 @@ from pathlib import Path
 
 from flask import Flask, g, jsonify, render_template, request, send_file, session
 
+import doc_import
 import projects as projects_mod
 import translate as translate_mod
 import tts_module as tts
@@ -250,7 +251,7 @@ def api_video_config():
         max_seconds=video.MAX_SECONDS,
         themes=[{"id": k, "label": v["label"], "bg": v["bg"], "text": v["text"], "accent": v["accent"]} for k, v in video.THEMES.items()],
         layouts=list(video.LAYOUTS),
-        media_positions=list(video.MEDIA_POSITIONS),
+        media_positions=list(video.MEDIA_POSITIONS), import_formats=doc_import.SUPPORTED,
         limits={k: v for k, v in video.LIMITS.items() if k != "max_seconds"},
         presets=[{"id": k, "label": v["label"], "desc": v["desc"], "ratio": v["ratio"], "resolution": v["resolution"],
                   "theme": v["theme"], "scenes": v["scenes"]} for k, v in video_presets.PRESETS.items()],
@@ -273,6 +274,33 @@ def api_video_assets():
         return jsonify(_assets().save(f.read(), f.filename or ""))
     except video.VideoError as exc:
         return _error(exc)
+
+
+_import_lock = __import__("threading").BoundedSemaphore(2)
+
+
+@app.post("/api/video/import")
+def api_video_import():
+    """Import a PDF / PowerPoint as scenes. multipart: file, narration=notes|text|none, max_pages, background=black|theme."""
+    if (gate := _login_gate()):
+        return gate
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="No file uploaded."), 400
+    try:
+        max_pages = int(request.form.get("max_pages") or 0) or None
+    except ValueError:
+        max_pages = None
+    if not _import_lock.acquire(timeout=120):
+        return jsonify(error="The server is busy converting other files. Try again in a minute."), 503
+    try:
+        return jsonify(doc_import.import_document(f.read(), f.filename or "", _assets(),
+                                                  narration=request.form.get("narration", "notes"), max_pages=max_pages,
+                                                  keep_layout=request.form.get("background", "black") != "theme"))
+    except video.VideoError as exc:
+        return _error(exc)
+    finally:
+        _import_lock.release()
 
 
 @app.get("/api/assets")

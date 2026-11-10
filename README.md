@@ -5,6 +5,7 @@ Natural text-to-speech in **75 languages (Arabic first)** plus a **video studio*
 - **Voice** — 322 Microsoft neural voices (male/female) via [`edge-tts`](https://github.com/rany2/edge-tts). Preview with a waveform, export MP3.
 - **Video** — scenes → slides (Pillow, correct Arabic/RTL shaping) + narration + captions → H.264/AAC MP4 (ffmpeg). Six aspect ratios (**16:9, 9:16, 1:1, 4:5, 4:3, 21:9**) × five resolutions (**480p, 720p HD, 1080p Full HD, 1440p 2K, 2160p 4K**); five content presets (lesson, explainer, short, course intro, quiz) in English and Arabic; insert images, videos and background music; SRT export.
 - **Translator** — translate pasted text into any supported language (Microsoft Edge translator, Google as fallback; no key), the voice switches automatically, with Undo.
+- **Import PDF / PowerPoint** — every page or slide becomes a scene on the timeline (full-screen, sharp up to 1440p); speaker notes or page text can become the narration. PowerPoint is converted pixel-exactly with LibreOffice when installed; otherwise `.pptx` becomes editable title/bullets/picture scenes.
 - **Projects** — save, open, duplicate, delete, "new project", autosave, and export/import a project as a zip bundle (with its media).
 - **UI** in English and Arabic (RTL), optional **Sign in with Google**.
 
@@ -69,6 +70,8 @@ python tts_module.py "Hello" --voice en-US-JennyNeural --out hello.mp3
 | `GET /api/video/config` | Sizes, themes, presets, limits |
 | `POST /api/video/assets` | Upload a background image/clip (multipart `file`) |
 | `POST /api/video/preview` | PNG preview of one scene: `{project, index}` |
+| `POST /api/video/import` | Import a PDF/PPTX/PPT/ODP as scenes (multipart `file`, `narration=notes\|text\|none`, `background=black\|theme`) → `{scenes, assets}` |
+| `POST /api/translate` | `{text, to}` → `{text}` |
 | `POST /api/video/render` | Start a render → `{job_id}`; poll `GET /api/video/jobs/<id>`; download `…/video.mp4` and `…/captions.srt` |
 
 Scene layouts: `title`, `bullets`, `text`, `quote`, `media`. Limits (env-tunable in `video.py`): 60 scenes, 25 MB images, 300 MB clips, 60 MB audio, 800 MB storage per user; max duration shrinks as resolution grows (4K is slow and CPU-heavy).

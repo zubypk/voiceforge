@@ -84,6 +84,7 @@
   .editor{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
   .slist{display:flex;flex-direction:column;gap:6px;max-height:640px;overflow:auto}
   .sitem{display:flex;gap:9px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;cursor:pointer;text-align:start;color:var(--text);font:inherit}
+  .sitem .sthumb{width:44px;height:28px;object-fit:cover;border-radius:5px;flex:none;background:#000}
   .sitem.on{border-color:var(--accent);background:rgba(124,92,255,.14)}
   .sitem em{font-style:normal;background:var(--grad);border-radius:7px;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px;flex:none}
   .sitem span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
@@ -284,6 +285,7 @@
         <div>
           <div class="slist" id="sceneList"></div>
           <button class="btn sm" id="addScene" style="margin-top:8px;width:100%" data-i="v_add">＋ Add scene</button>
+          <button class="btn sm" id="importDoc" style="margin-top:6px;width:100%" data-i="imp_btn">📄 Import PDF / PowerPoint</button>
         </div>
         <div id="sceneEditor">
           <div class="row" style="margin-top:0">
@@ -311,7 +313,7 @@
                 <div class="row" style="margin-top:6px"><button class="btn sm" id="mediaPick" data-i="v_media_pick">Choose / upload…</button><button class="btn sm danger" id="mediaClear" data-i="v_media_remove">Remove</button></div></div>
             </div>
             <div class="grid2" id="mediaOpts" style="margin-top:10px">
-              <div><label for="mediaPos" data-i="v_media_pos">Position</label><select id="mediaPos"><option value="auto" data-i="pos_auto">Automatic</option><option value="left" data-i="pos_left">Left</option><option value="right" data-i="pos_right">Right</option><option value="top" data-i="pos_top">Top</option><option value="bottom" data-i="pos_bottom">Bottom</option></select></div>
+              <div><label for="mediaPos" data-i="v_media_pos">Position</label><select id="mediaPos"><option value="auto" data-i="pos_auto">Automatic</option><option value="left" data-i="pos_left">Left</option><option value="right" data-i="pos_right">Right</option><option value="top" data-i="pos_top">Top</option><option value="bottom" data-i="pos_bottom">Bottom</option><option value="full" data-i="pos_full">Full screen</option></select></div>
               <div><label for="mediaFit" data-i="v_media_fit">Fit</label><select id="mediaFit"><option value="contain" data-i="fit_contain">Show all (fit)</option><option value="cover" data-i="fit_cover">Fill (crop)</option></select></div>
             </div>
             <div class="hint" style="margin-top:6px" data-i="v_media_hint"></div>

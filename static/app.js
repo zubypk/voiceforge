@@ -457,10 +457,11 @@ $("musicClear").onclick = () => { V.project.music = null; $("musicAudio").remove
 $("musicVol").oninput = (e) => { V.project.music.volume = +e.target.value / 100; $("musicVolVal").textContent = e.target.value + "%"; markDirty(); };
 
 /* ================= VIDEO STUDIO: scenes ================= */
-const sceneLabel = (s) => s.title || (s.body || "").split("\n")[0] || (s.narration || "").slice(0, 40) || t("untitled");
+const sceneLabel = (s) => s.title || (s.body || "").split("\n")[0] || s.label || (s.narration || "").slice(0, 40) || t("untitled");
 function renderSceneList() {
   const box = $("sceneList"); box.innerHTML = "";
   V.project.scenes.forEach((s, i) => { const b = document.createElement("button"); b.className = "sitem" + (i === V.sel ? " on" : ""); b.innerHTML = "<em></em><span></span>"; b.firstChild.textContent = i + 1; b.lastChild.textContent = sceneLabel(s);
+    if (s.media && s.media.asset) { const im = document.createElement("img"); im.className = "sthumb"; im.loading = "lazy"; im.alt = ""; im.src = `/api/assets/${s.media.asset}/thumb`; b.insertBefore(im, b.lastChild); }
     b.onclick = () => { V.sel = i; renderSceneList(); loadSceneFields(); schedulePreview(); }; box.appendChild(b); });
   updateEstimate();
 }
@@ -479,7 +480,7 @@ function renderMediaBox() {
   const m = s.media, has = m && m.asset;
   $("mediaName").textContent = has ? assetName(m.asset) || m.assetName || "" : t("v_media_none"); $("mediaClear").style.display = has ? "" : "none"; $("mediaOpts").style.display = has ? "" : "none";
   const th = $("mediaThumb"); th.style.display = has ? "" : "none"; $("mediaEmpty").style.display = has ? "none" : "";
-  if (has) { th.src = `/api/assets/${m.asset}/thumb`; $("mediaPos").value = m.position; $("mediaFit").value = m.fit; $("mediaPos").disabled = s.layout === "media"; }
+  if (has) { th.src = `/api/assets/${m.asset}/thumb`; $("mediaPos").value = m.position; $("mediaFit").value = m.fit; $("mediaPos").disabled = false; }
 }
 $("mediaPick").onclick = async () => {
   const a = await pickAsset(["image", "video"]); if (!a) return; const s = sceneAt();
@@ -508,6 +509,44 @@ $("sLayout").onchange = (e) => { sceneAt().layout = e.target.value; renderMediaB
 $("sTrans").onchange = (e) => { sceneAt().transition = e.target.value; markDirty(); };
 $("sDur").oninput = (e) => { const v = parseFloat(e.target.value); sceneAt().duration = isFinite(v) && v > 0 ? v : null; markDirty(); updateEstimate(); };
 $("sBgType").onchange = (e) => { sceneAt().background.type = e.target.value; renderBgExtra(); markDirty(); schedulePreview(); };
+$("importDoc").onclick = () => {
+  const box = document.createElement("div");
+  box.innerHTML = `<p class="hint" data-r="intro"></p>
+    <input type="file" data-r="file" accept=".pdf,.pptx,.ppsx,.ppt,.odp" style="width:100%;margin:8px 0">
+    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label data-r="l_narr"></label><select data-r="narr"><option value="notes"></option><option value="text"></option><option value="none"></option></select></div>
+      <div><label data-r="l_where"></label><select data-r="where"><option value="after"></option><option value="end"></option><option value="replace"></option></select></div>
+      <div><label data-r="l_bg"></label><select data-r="bg"><option value="black"></option><option value="theme"></option></select></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-r="go"></button><span class="status" data-r="st"></span></div>`;
+  const r = (k) => box.querySelector(`[data-r="${k}"]`);
+  r("intro").textContent = t("imp_intro"); r("l_narr").textContent = t("imp_narr"); r("l_where").textContent = t("imp_where"); r("l_bg").textContent = t("imp_bg");
+  ["imp_n_notes", "imp_n_text", "imp_n_none"].forEach((k, i) => (r("narr").options[i].textContent = t(k)));
+  ["imp_w_after", "imp_w_end", "imp_w_replace"].forEach((k, i) => (r("where").options[i].textContent = t(k)));
+  ["imp_bg_black", "imp_bg_theme"].forEach((k, i) => (r("bg").options[i].textContent = t(k)));
+  r("go").textContent = t("imp_go");
+  r("go").onclick = async () => {
+    const f = r("file").files[0]; if (!f) return toast(t("imp_pick"), true);
+    const fd = new FormData(); fd.append("file", f); fd.append("narration", r("narr").value); fd.append("background", r("bg").value);
+    const where = r("where").value, room = cfg.limits.max_scenes - (where === "replace" ? 0 : V.project.scenes.length);
+    if (room < 1) return toast(t("imp_full"), true);
+    fd.append("max_pages", room);
+    r("go").disabled = true; r("st").textContent = t("imp_working");
+    try {
+      const res = await (await api("/api/video/import", { method: "POST", body: fd })).json();
+      const names = {}; res.assets.forEach((a) => (names[a.id] = a.name));
+      const sc = res.scenes.map((s) => { const n = newScene(s); n.background = Object.assign({ type: "theme", color: "#1d4e9e", asset: null, assetName: "" }, s.background || {});
+        n.media = s.media ? Object.assign({ assetName: names[s.media.asset] || "" }, s.media) : null; return n; });
+      const a = V.project.scenes, onlyBlank = a.length === 1 && !a[0].title && !a[0].body && !a[0].narration && !a[0].media;
+      if (where === "replace" || onlyBlank) { V.project.scenes = sc; V.sel = 0; }
+      else if (where === "end") { V.sel = a.length; a.push(...sc); }
+      else { a.splice(V.sel + 1, 0, ...sc); V.sel = V.sel + 1; }
+      closeModal(); refreshVideoUI(); markDirty();
+      toast(res.imported < res.pages ? tf("imp_partial", res.imported, res.pages) : tf("imp_done", res.imported));
+    } catch (e) { r("st").textContent = ""; toast(e.message, true); r("go").disabled = false; }
+  };
+  openModal(t("imp_title"), box);
+};
 $("addScene").onclick = () => { V.project.scenes.push(newScene()); V.sel = V.project.scenes.length - 1; refreshVideoUI(); markDirty(); };
 $("sDup").onclick = () => { V.project.scenes.splice(V.sel + 1, 0, clone(sceneAt())); V.sel++; refreshVideoUI(); markDirty(); };
 $("sDel").onclick = () => { V.project.scenes.splice(V.sel, 1); V.sel = Math.max(0, V.sel - 1); refreshVideoUI(); markDirty(); };

@@ -5,3 +5,5 @@ google-auth
 requests
 Pillow
 imageio-ffmpeg
+pypdfium2
+python-pptx
