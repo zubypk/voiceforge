@@ -10,6 +10,7 @@ import_document(data, filename, assets, narration="notes|text|none", max_pages=N
 from __future__ import annotations
 
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -47,6 +48,9 @@ def _clean(text: str, limit: int) -> str:
 
 
 def _soffice() -> str | None:
+    env = os.environ.get("VF_SOFFICE")                 # e.g. a portable LibreOffice installed without root
+    if env and Path(env).exists():
+        return env
     return shutil.which("soffice") or shutil.which("libreoffice")
 
 
