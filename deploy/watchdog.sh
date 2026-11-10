@@ -4,6 +4,7 @@
 # Restarts the app if /healthz stops answering and the Cloudflare quick tunnel if it is gone.
 # The current public link is always written to PUBLIC_URL.txt in the app folder.
 APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+[ "$APP_DIR" = "$HOME" ] && { echo "refusing to run in \$HOME" >&2; exit 1; }
 PORT="${PORT:-5057}"; WORKERS="${WORKERS:-2}"
 cd "$APP_DIR" || exit 1
 export VF_DATA="${VF_DATA:-$APP_DIR/data}"

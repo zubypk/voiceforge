@@ -4,7 +4,14 @@
 #   WITH_OFFICE=1 bash deploy/update.sh   # also install a portable LibreOffice (Word/Excel/PPT import), ~350 MB
 # SKIP_TUNNEL=1 leaves the public link alone. Settings (env): APP_DIR (default: repo root), PORT (5057), VF_DATA (APP_DIR/data), WORKERS (2)
 set -euo pipefail
-APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# deploy/update.sh -> app folder is the parent; a copy saved anywhere else -> that folder itself
+if [ -z "${APP_DIR:-}" ]; then
+  if [ "$(basename "$HERE")" = "deploy" ]; then APP_DIR="$(dirname "$HERE")"; else APP_DIR="$HERE"; fi
+fi
+if [ "$APP_DIR" = "$HOME" ] || [ "$APP_DIR" = "/" ]; then
+  echo "Refusing to install into $APP_DIR. Put the app in its own folder (e.g. ~/tts-studio) or set APP_DIR." >&2; exit 1
+fi
 PORT="${PORT:-5057}"; WORKERS="${WORKERS:-2}"
 export VF_DATA="${VF_DATA:-$APP_DIR/data}"
 cd "$APP_DIR"
@@ -71,12 +78,23 @@ fi
 grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' tunnel.log 2>/dev/null | tail -1 > PUBLIC_URL.txt || true
 echo "Demo link: $(cat PUBLIC_URL.txt 2>/dev/null || echo 'not found yet, see tunnel.log')"
 
-log "Auto-restart (crontab: every 5 minutes and after reboot)"
-if command -v crontab >/dev/null; then
-  job="cd $APP_DIR && PORT=$PORT bash deploy/watchdog.sh >/dev/null 2>&1"
-  ( crontab -l 2>/dev/null | grep -v 'deploy/watchdog.sh'; echo "*/5 * * * * $job"; echo "@reboot sleep 30; $job" ) | crontab -
-  echo "Installed. The current link is always in $APP_DIR/PUBLIC_URL.txt"
+log "Auto-restart (every 5 minutes and after reboot)"
+job="cd $APP_DIR && PORT=$PORT bash deploy/watchdog.sh >/dev/null 2>&1"
+if command -v crontab >/dev/null && ( crontab -l 2>/dev/null | grep -v 'deploy/watchdog.sh'; echo "*/5 * * * * $job"; echo "@reboot sleep 30; $job" ) | crontab - 2>/dev/null; then
+  echo "Installed in crontab."
 else
-  echo "crontab not available: run deploy/watchdog.sh from your own scheduler"
+  # no crontab permission: use a systemd user timer (needs lingering for after-reboot starts)
+  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  D="$HOME/.config/systemd/user"; mkdir -p "$D"
+  printf '[Unit]\nDescription=VoiceForge watchdog\n\n[Service]\nType=oneshot\nWorkingDirectory=%s\nEnvironment=PORT=%s\nExecStart=/bin/bash %s/deploy/watchdog.sh\nKillMode=process\n' \
+    "$APP_DIR" "$PORT" "$APP_DIR" > "$D/voiceforge-watchdog.service"
+  printf '[Unit]\nDescription=Run the VoiceForge watchdog at boot and every 5 minutes\n\n[Timer]\nOnBootSec=60\nOnUnitActiveSec=5min\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n' > "$D/voiceforge-watchdog.timer"
+  if systemctl --user daemon-reload 2>/dev/null && systemctl --user enable --now voiceforge-watchdog.timer 2>/dev/null; then
+    echo "Installed as a systemd user timer."
+    loginctl show-user "$(id -u)" -p Linger 2>/dev/null | grep -q yes || echo "Note: run 'sudo loginctl enable-linger $(whoami)' so it also starts after a reboot."
+  else
+    echo "Could not install a scheduler: run deploy/watchdog.sh periodically yourself."
+  fi
 fi
+echo "The current demo link is always in $APP_DIR/PUBLIC_URL.txt"
 echo "Done."
